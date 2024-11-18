@@ -1,0 +1,375 @@
+{
+    "openapi": "3.0.1",
+    "info": {
+        "version": "0.0.1",
+        "title": "Simple Oidc",
+        "description": "Simple OIDC and Oauth2 service"
+    },
+    "paths": {
+        "/.well-known/openid-configuration": {
+            "x-ogen-operation-group": "WellKnown",
+            "get": {
+                "operationId": "openIdConfiguration",
+                "description": "(Partial) OIDC config",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ".well-known/openid-configuration",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OpenIDProviderMetadataResponse"
+                                }
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/.well-known/jwks.json": {
+            "x-ogen-operation-group": "WellKnown",
+            "get": {
+                "operationId": "jwks",
+                "description": "Json Web Keyset",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ".well-known/jwks.json",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JWKSetResponse"
+                                }
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/": {
+            "x-ogen-operation-group": "Index",
+            "get": {
+                "operationId": "Root",
+                "description": "Root URL",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "Noop operation, render a splash page",
+                        "content": {
+                            "text/html": {}
+                        }
+                    },
+                    "default": {
+                        "description": "error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/authorize": {
+            "get": {
+                "description": "",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "response_type",
+                        "required": true,
+                        "schema": {
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "in": "query",
+                        "name": "client_id",
+                        "required": true,
+                        "schema": {
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "in": "query",
+                        "name": "scope",
+                        "required": true,
+                        "schema": {
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "in": "query",
+                        "name": "redirect_uri",
+                        "required": true,
+                        "schema": {
+                          "type": "string"
+                        }
+                      },
+
+                      {
+                        "in": "query",
+                        "name": "state",
+                        "schema": {
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "in": "query",
+                        "name": "nonce",
+                        "required": true,
+                        "schema": {
+                          "type": "string"
+                        }
+                      }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Client Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/login": {
+            "get": {
+                "description": "Login Page",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "BearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT"
+            }
+        },
+        "schemas": {
+            "OpenIDProviderMetadataResponse": {
+                "type": "object",
+                "required": [
+                    "issuer",
+                    "authorization_endpoint",
+                    "token_endpoint",
+                    "jwks_uri"
+                ],
+                "properties": {
+                    "issuer": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "authorization_endpoint": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "token_endpoint": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "jwks_uri": {
+                        "nullable": false,
+                        "type": "string"
+                    }
+                }
+            },
+            "JWKSetResponse": {
+                "type": "object",
+                "required": [
+                    "keys"
+                ],
+                "properties": {
+                    "keys": {
+                        "nullable": false,
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JWKResponse"
+                        }
+                    }
+                }
+            },
+            "JWKResponse": {
+                "type": "object",
+                "properties": {
+                    "kty": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "use": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "key_ops": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "alg": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "kid": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "x5u": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "x5c": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "x5t": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "n": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "e": {
+                        "nullable": false,
+                        "type": "string"
+                    }
+                }
+            },
+            "OidcLoginParams": {
+                "type": "object",
+                "required": [
+                    "client_id",
+                    "redirect_uri",
+                    "response_type",
+                    "scope",
+                    "state"
+                ],
+                "properties": {
+                    "auth_id": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "auth_2fa": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "auth_password": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "client_id": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "redirect_uri": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "response_type": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "scope": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "state": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "message": {
+                        "nullable": false,
+                        "type": "string"
+                    }
+                }
+            },
+            "AuthChannelType": {
+                "type": "string",
+                "enum": [
+                    "phone",
+                    "email",
+                    "oidc"
+                ]
+            },
+            "AuthChannelLogin": {
+                "type": "object",
+                "required": [
+                    "type",
+                    "value"
+                ],
+                "properties": {
+                    "type": {
+                        "nullable": false,
+                        "$ref": "#/components/schemas/AuthChannelType"
+                    },
+                    "value": {
+                        "nullable": false,
+                        "type": "string"
+                    }
+                }
+            },
+            "LoginTokens": {
+                "type": "object",
+                "required": [
+                    "token",
+                    "refreshToken"
+                ],
+                "properties": {
+                    "token": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "refreshToken": {
+                        "nullable": false,
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    }
+}
