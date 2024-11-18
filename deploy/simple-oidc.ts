@@ -4,7 +4,7 @@ import * as cdk from 'aws-cdk-lib'
 import { env } from 'process'
 
 async function init() {
-  const hostedUrl = env.HOSTED_URL //|| "simple-oidc.kncept.com"
+  const hostedUrl = env.HOSTED_URL
 
   if (!hostedUrl) {
     console.log('Please specify a HOSTED_URL eg: simple-oidc.kncept.com')

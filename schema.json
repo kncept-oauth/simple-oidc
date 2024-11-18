@@ -69,7 +69,7 @@
         "/": {
             "x-ogen-operation-group": "Index",
             "get": {
-                "operationId": "Root",
+                "operationId": "Index",
                 "description": "Root URL",
                 "parameters": [],
                 "responses": {
@@ -93,6 +93,7 @@
             }
         },
         "/authorize": {
+            "x-ogen-operation-group": "Authorization",
             "get": {
                 "description": "",
                 "parameters": [
@@ -173,6 +174,7 @@
             }
         },
         "/login": {
+            "x-ogen-operation-group": "LoginRegister",
             "get": {
                 "description": "Login Page",
                 "parameters": [],
