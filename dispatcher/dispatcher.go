@@ -4,13 +4,22 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+
+	"github.com/klauspost/compress/gzhttp"
 
 	"github.com/kncept-oauth/simple-oidc/cmd/gen/api"
+	"github.com/kncept-oauth/simple-oidc/webcontent"
 )
 
-func NewApplication() (*api.Server, error) {
+func NewApplication() (http.HandlerFunc, error) {
 	fmt.Printf("NewApplication\n")
-	return api.NewServer(&dispatcherHandler{})
+	server, err := api.NewServer(&dispatcherHandler{})
+	if err != nil {
+		return nil, err
+	}
+	handler := gzhttp.GzipHandler(server)
+	return handler, err
 }
 
 type dispatcherHandler struct {
@@ -23,7 +32,20 @@ func (obj *dispatcherHandler) AuthorizeGet(ctx context.Context, params api.Autho
 }
 
 func (obj *dispatcherHandler) Index(ctx context.Context) (api.IndexRes, error) {
-	return nil, errors.ErrUnsupported
+	found, err := webcontent.Fs.ReadDir(".")
+	if err != nil {
+		return nil, err
+	}
+	for _, val := range found {
+		fmt.Printf("found %v\n", val)
+	}
+	file, err := webcontent.Fs.Open("index.html")
+	if err != nil {
+		return nil, err
+	}
+	return &api.IndexOK{
+		Data: file,
+	}, nil
 }
 
 func (obj *dispatcherHandler) LoginGet(ctx context.Context) error {
