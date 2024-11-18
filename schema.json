@@ -147,6 +147,12 @@
                       }
                 ],
                 "responses": {
+                    "200": {
+                        "description": "LoginRegister Required",
+                        "content": {
+                            "text/html": {}
+                        }
+                    },
                     "302": {
                         "description": "OK"
                     },
@@ -169,18 +175,6 @@
                                 }
                             }
                         }
-                    }
-                }
-            }
-        },
-        "/login": {
-            "x-ogen-operation-group": "LoginRegister",
-            "get": {
-                "description": "Login Page",
-                "parameters": [],
-                "responses": {
-                    "200": {
-                        "description": "OK"
                     }
                 }
             }
