@@ -1,4 +1,4 @@
-FROM docker.io/ubuntu:23.04
+FROM docker.io/ubuntu:25.04
 # https://github.com/kncept/slog
 # DEBUGGING: docker build -f .devcontainer/ubuntu.Dockerfile -t ubuntu-dev . && docker run -it ubuntu-dev bash
 
@@ -14,7 +14,7 @@ RUN apt-get -y install sudo wget curl vim git
     # echo LANG=en_US.UTF-8 >> /etc/environment && \
     # echo LC_CTYPE=en_US.UTF-8 >> /etc/environment
 
-ARG GO_SRC_FILE=go1.21.5.linux-amd64.tar.gz
+ARG GO_SRC_FILE=go1.23.4.linux-amd64.tar.gz
 RUN \
     curl -OL https://go.dev/dl/${GO_SRC_FILE} && \
     tar -C /usr/local -xvf ${GO_SRC_FILE}
@@ -52,7 +52,7 @@ RUN \
     echo "[url \"ssh://git@github.com/\"]" >> .gitconfig && \
     echo "        insteadOf = https://github.com/" >> .gitconfig
 # Golang gopls tool
-RUN go install golang.org/x/tools/gopls@latest
+RUN go install golang.org/x/tools/gopls@v0.17.1
 
 # protoc tool?
 #RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest

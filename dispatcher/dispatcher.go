@@ -9,7 +9,8 @@ import (
 
 	"github.com/klauspost/compress/gzhttp"
 
-	"github.com/kncept-oauth/simple-oidc/cmd/gen/api"
+	"github.com/kncept-oauth/simple-oidc/authorizer"
+	"github.com/kncept-oauth/simple-oidc/gen/api"
 	"github.com/kncept-oauth/simple-oidc/webcontent"
 )
 
@@ -45,12 +46,11 @@ func (obj *snippetsHandler) ServeHTTP(res http.ResponseWriter, req *http.Request
 }
 
 type dispatcherHandler struct {
+	a authorizer.Authorizer
 }
 
 func (obj *dispatcherHandler) AuthorizeGet(ctx context.Context, params api.AuthorizeGetParams) (api.AuthorizeGetRes, error) {
-	// lookup and validate tennant
-	// also handle default tennant
-	return nil, errors.ErrUnsupported
+	return obj.a.AuthorizeGet(ctx, params)
 }
 
 func (obj *dispatcherHandler) Index(ctx context.Context) (api.IndexOK, error) {

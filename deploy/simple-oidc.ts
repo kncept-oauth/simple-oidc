@@ -3,6 +3,7 @@ import 'source-map-support/register'
 import * as cdk from 'aws-cdk-lib'
 import { env } from 'process'
 
+// javascript workaround - need access to async code in the top level function
 async function init() {
   const hostedUrl = env.HOSTED_URL
 
