@@ -14,19 +14,21 @@ import (
 	"github.com/kncept-oauth/simple-oidc/webcontent"
 )
 
-func NewApplication() (http.HandlerFunc, error) {
+func NewApplication(daoSource DaoSource) (http.HandlerFunc, error) {
 	fmt.Printf("NewApplication\n")
 
 	serveMux := http.NewServeMux()
 
 	serveMux.Handle("/snippet/", &snippetsHandler{})
-
-	server, err := api.NewServer(&dispatcherHandler{})
+	server, err := api.NewServer(&dispatcherHandler{
+		authorizer: authorizer.NewAuthorizer(
+			daoSource.GetClientStore(),
+		),
+	})
 	if err != nil {
 		return nil, err
 	}
 	serveMux.Handle("/", server)
-
 	handler := gzhttp.GzipHandler(serveMux)
 	return handler, err
 }
@@ -46,11 +48,11 @@ func (obj *snippetsHandler) ServeHTTP(res http.ResponseWriter, req *http.Request
 }
 
 type dispatcherHandler struct {
-	a authorizer.Authorizer
+	authorizer authorizer.Authorizer
 }
 
 func (obj *dispatcherHandler) AuthorizeGet(ctx context.Context, params api.AuthorizeGetParams) (api.AuthorizeGetRes, error) {
-	return obj.a.AuthorizeGet(ctx, params)
+	return obj.authorizer.AuthorizeGet(ctx, params)
 }
 
 func (obj *dispatcherHandler) Index(ctx context.Context) (api.IndexOK, error) {
@@ -64,12 +66,15 @@ func (obj *dispatcherHandler) Index(ctx context.Context) (api.IndexOK, error) {
 }
 
 func (obj *dispatcherHandler) LoginGet(ctx context.Context) error {
+	fmt.Printf("TODO: LoginGet\n")
 	return errors.ErrUnsupported
 }
 func (obj *dispatcherHandler) Jwks(ctx context.Context) (*api.JWKSetResponse, error) {
+	fmt.Printf("TODO: Jwks\n")
 	return nil, errors.ErrUnsupported
 }
 func (obj *dispatcherHandler) OpenIdConfiguration(ctx context.Context) (*api.OpenIDProviderMetadataResponse, error) {
+	fmt.Printf("TODO: OpenIdConfiguration\n")
 	return nil, errors.ErrUnsupported
 }
 

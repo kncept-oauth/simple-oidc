@@ -11,6 +11,12 @@ import (
 	"github.com/kncept-oauth/simple-oidc/gen/api"
 )
 
+func NewAuthorizer(store ClientStore) Authorizer {
+	return Authorizer{
+		store: store,
+	}
+}
+
 type Authorizer struct {
 	store ClientStore
 }

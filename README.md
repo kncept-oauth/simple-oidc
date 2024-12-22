@@ -2,6 +2,15 @@
 
 The codebase is golang (code/lambda) and typescript (infrastructure/deploy).
 
+# Using
+Here is a list of the different way to use this
+* Register from the simple-oidc.kncept.com site
+* Clone the repo and deploy to the cloud of your choice
+* Embed it into your own custom solution
+  - see [main.go](simple-oidc/main.go)
+
+Whichever way you choose, buy me a coffee sometime :)
+
 # Codebase considerations
 Golang doesn't play nice with other projects, and insists on parsing (and erroring on) node_modules, so go and js have been split
 
