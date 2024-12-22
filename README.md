@@ -3,8 +3,12 @@
 The codebase is golang (code/lambda) and typescript (infrastructure/deploy).
 
 # Codebase considerations
+Golang doesn't play nice with other projects, and insists on parsing (and erroring on) node_modules, so go and js have been split
+
 Dependencies can either be all-in or all-out - and javascript and golang both have very differing philosophies.
 At the moment, dependencies will be all-out (node_modules and golang vendoring)
+I expect that this will switch to all-in before long
+
 
 # Aims
 1) To provide a simple all in one oidc server that "does enough" to use JWT's as the auth mechanism in an application
