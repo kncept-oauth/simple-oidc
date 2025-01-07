@@ -35,5 +35,21 @@ func NewFilesystemDao() dispatcher.DaoSource {
 }
 
 func (obj *FilesystemDao) GetClientStore() authorizer.ClientStore {
+	return &clientStore{
+		RootDir: obj.RootDir,
+	}
+}
+
+type clientStore struct {
+	RootDir string
+}
+
+// GetClient implements authorizer.ClientStore.
+func (c *clientStore) GetClient(clientId string) (authorizer.Client, error) {
+	panic("unimplemented")
+}
+
+// Save implements authorizer.ClientStore.
+func (c *clientStore) Save(client authorizer.ClientStruct) error {
 	panic("unimplemented")
 }
