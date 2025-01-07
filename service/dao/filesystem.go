@@ -4,8 +4,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/kncept-oauth/simple-oidc/authorizer"
-	"github.com/kncept-oauth/simple-oidc/dispatcher"
+	"github.com/kncept-oauth/simple-oidc/service/authorizer"
+	"github.com/kncept-oauth/simple-oidc/service/dispatcher"
 )
 
 type FilesystemDao struct {

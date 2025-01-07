@@ -9,9 +9,9 @@ import (
 
 	"github.com/klauspost/compress/gzhttp"
 
-	"github.com/kncept-oauth/simple-oidc/authorizer"
-	"github.com/kncept-oauth/simple-oidc/gen/api"
-	"github.com/kncept-oauth/simple-oidc/webcontent"
+	"github.com/kncept-oauth/simple-oidc/service/authorizer"
+	"github.com/kncept-oauth/simple-oidc/service/gen/api"
+	"github.com/kncept-oauth/simple-oidc/service/webcontent"
 )
 
 func NewApplication(daoSource DaoSource) (http.HandlerFunc, error) {

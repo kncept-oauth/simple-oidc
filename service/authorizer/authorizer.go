@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/kncept-oauth/simple-oidc/gen/api"
+	"github.com/kncept-oauth/simple-oidc/service/gen/api"
 )
 
 func NewAuthorizer(store ClientStore) Authorizer {

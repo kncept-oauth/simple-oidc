@@ -3,7 +3,7 @@ package authorizer
 import (
 	"testing"
 
-	"github.com/kncept-oauth/simple-oidc/gen/api"
+	"github.com/kncept-oauth/simple-oidc/service/gen/api"
 )
 
 func TestAuthorizerInterface(t *testing.T) {

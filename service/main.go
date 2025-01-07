@@ -8,8 +8,8 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/awslabs/aws-lambda-go-api-proxy/httpadapter"
-	"github.com/kncept-oauth/simple-oidc/dao"
-	"github.com/kncept-oauth/simple-oidc/dispatcher"
+	"github.com/kncept-oauth/simple-oidc/service/dao"
+	"github.com/kncept-oauth/simple-oidc/service/dispatcher"
 )
 
 func main() {
