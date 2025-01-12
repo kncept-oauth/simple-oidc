@@ -4,27 +4,33 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/klauspost/compress/gzhttp"
 	servicedispatcher "github.com/kncept-oauth/simple-oidc/service/dispatcher"
 	"github.com/kncept-oauth/simple-oidc/testharness/webcontent"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/compress"
+	"github.com/gofiber/template/html/v2"
 )
 
-func NewApplication(daoSource servicedispatcher.DaoSource) (http.HandlerFunc, error) {
+func NewApplication(daoSource servicedispatcher.DaoSource) *fiber.App {
 	fmt.Printf("New Testharness Application\n")
 
-	serveMux := http.NewServeMux()
-	serveMux.Handle("/", http.HandlerFunc(Index))
-	handler := gzhttp.GzipHandler(serveMux)
-	return handler, nil
+	viewEngine := html.NewFileSystem(http.FS(webcontent.Fs), ".html")
+
+	app := fiber.New(
+		fiber.Config{
+			Views: viewEngine,
+		},
+	)
+	app.Use(
+		compress.New(),
+	)
+
+	app.Get("/", Index)
+
+	return app
 }
 
-func Index(w http.ResponseWriter, r *http.Request) {
-	data, err := webcontent.Fs.ReadFile("index.html")
-	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("%v", err)))
-	}
-
-	w.WriteHeader(200)
-	w.Write(data)
+func Index(c *fiber.Ctx) error {
+	return c.Render("index", nil)
 }

@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 
 	servicedao "github.com/kncept-oauth/simple-oidc/service/dao"
 	servicedispatcher "github.com/kncept-oauth/simple-oidc/service/dispatcher"
@@ -12,37 +15,50 @@ import (
 )
 
 func main() {
-
 	var wg sync.WaitGroup
 
 	datastore := servicedao.NewFilesystemDao()
 
+	// run a the application, with access to the underlying datastore
+	appPort := "8080"
+	handler, err := servicedispatcher.NewApplication(datastore)
+	if err != nil {
+		panic(err)
+	}
+	server := http.Server{Addr: ":" + appPort, Handler: handler}
 	wg.Add(1)
 	go func() {
-		srv, err := servicedispatcher.NewApplication(datastore)
-		if err != nil {
-			panic(err)
+		fmt.Printf("Starting Nested App on http://127.0.0.1:%s/\n", appPort)
+		if err := server.ListenAndServe(); err != nil {
+			if http.ErrServerClosed != err { // _why_ is this an error?
+				panic(err)
+			}
 		}
-		fmt.Printf("starting nested app on http://127.0.0.1:8080/\n")
-		if err := http.ListenAndServe(":8080", srv); err != nil {
-			wg.Done()
-			log.Fatal(err)
-		}
+		fmt.Printf("Nested App Shutdown\n")
+		wg.Done()
 	}()
 
+	// run a test harness
+	app := dispatcher.NewApplication(datastore)
+	testHarnessPort := "3000"
 	wg.Add(1)
 	go func() {
-		// run a test harness on :3000
-		srv, err := dispatcher.NewApplication(datastore)
-		if err != nil {
+
+		fmt.Printf("Starting Testharness on http://127.0.0.1:%s/\n", testHarnessPort)
+		if err := app.Listen(":" + testHarnessPort); err != nil {
 			panic(err)
 		}
-		fmt.Printf("starting testharness on http://127.0.0.1:3000/\n")
-		if err := http.ListenAndServe(":3000", srv); err != nil {
-			wg.Done()
-			log.Fatal(err)
-		}
+		fmt.Printf("Testharness Shutdown\n")
 		wg.Done()
+	}()
+
+	shutdownChan := make(chan os.Signal, 1)
+	signal.Notify(shutdownChan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-shutdownChan
+		fmt.Printf("Shutting down\n")
+		app.Shutdown()
+		server.Shutdown(context.Background())
 	}()
 
 	wg.Wait()

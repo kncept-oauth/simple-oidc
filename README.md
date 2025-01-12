@@ -7,7 +7,7 @@ Here is a list of the different way to use this
 * Register from the simple-oidc.kncept.com site
 * Clone the repo and deploy to the cloud of your choice
 * Embed it into your own custom solution
-  - see [main.go](simple-oidc/main.go)
+  - see [main.go](service/main.go)
 
 Whichever way you choose, buy me a coffee sometime :)
 

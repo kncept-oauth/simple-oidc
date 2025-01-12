@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/awslabs/aws-lambda-go-api-proxy/httpadapter"
@@ -44,14 +48,34 @@ func RunAsLambda() {
 }
 
 func RunLocally() {
-	srv, err := dispatcher.NewApplication(
+	var wg sync.WaitGroup
+
+	handler, err := dispatcher.NewApplication(
 		dao.NewFilesystemDao(),
 	)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
-	fmt.Printf("starting server on http://127.0.0.1:8080/\n")
-	if err := http.ListenAndServe(":8080", srv); err != nil {
-		log.Fatal(err)
-	}
+	appPort := "8080"
+	server := http.Server{Addr: ":" + appPort, Handler: handler}
+	wg.Add(1)
+	go func() {
+		fmt.Printf("Starting App on http://127.0.0.1:%s/\n", appPort)
+		if err := server.ListenAndServe(); err != nil {
+			if http.ErrServerClosed != err { // _why_ is this an error?
+				panic(err)
+			}
+		}
+		fmt.Printf("App Shutdown\n")
+		wg.Done()
+	}()
+
+	shutdownChan := make(chan os.Signal, 1)
+	signal.Notify(shutdownChan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-shutdownChan
+		fmt.Printf("Shutting down\n")
+		server.Shutdown(context.Background())
+	}()
+	wg.Wait()
 }
