@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/kncept-oauth/simple-oidc/service/dispatcherauth"
 	"github.com/kncept-oauth/simple-oidc/service/gen/api"
 )
 
@@ -22,17 +23,16 @@ type Authorizer struct {
 }
 
 func (obj Authorizer) AuthorizeGet(ctx context.Context, params api.AuthorizeGetParams) (api.AuthorizeGetRes, error) {
-	client, err := obj.store.GetClient(params.ClientID)
+	client, err := obj.store.Get(params.ClientID)
 	if err != nil {
 		return nil, err
 	}
 	if client == nil {
-		return nil, fmt.Errorf("no such client " + params.ClientID)
+		return nil, fmt.Errorf("no such client: %v", params.ClientID)
 	}
-	fmt.Printf("client: %v\n", client)
 
 	// TODO: what to do with this
-	// params.ResponseType // id_token token
+	// params.ResponseType // id_token token     or     code
 
 	// validate allowed scopes
 	// allowedScopes := client.GetAllowedScopes()
@@ -41,8 +41,20 @@ func (obj Authorizer) AuthorizeGet(ctx context.Context, params api.AuthorizeGetP
 
 	redirectUri := params.RedirectURI
 	if !isValidRedirectUri(client, redirectUri) {
-		return nil, fmt.Errorf("invalid redirect uri " + redirectUri)
+		return nil, fmt.Errorf("invalid redirect uri: %v", redirectUri)
 	}
+
+	fmt.Printf("now what\n")
+
+	// fetch simple-oidc(soidc) state cookie
+	loginCookie := dispatcherauth.GetLoginCookie(ctx)
+	if loginCookie != "" {
+		// validate
+		// handle logged in (must click to approve access)
+	}
+	// if they don't, then make them loginregister (TODO: according to client config)
+
+	// redirect to a login/auth page
 
 	return nil, errors.ErrUnsupported
 }
@@ -71,5 +83,6 @@ func isValidRedirectUri(client Client, redirectUri string) bool {
 			return true
 		}
 	}
+
 	return false
 }

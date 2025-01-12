@@ -19,7 +19,7 @@ type AuthorizeGetParams struct {
 	Scope        string
 	RedirectURI  string
 	State        OptString
-	Nonce        string
+	Nonce        OptString
 }
 
 func unpackAuthorizeGetParams(packed middleware.Parameters) (params AuthorizeGetParams) {
@@ -65,7 +65,9 @@ func unpackAuthorizeGetParams(packed middleware.Parameters) (params AuthorizeGet
 			Name: "nonce",
 			In:   "query",
 		}
-		params.Nonce = packed[key].(string)
+		if v, ok := packed[key]; ok {
+			params.Nonce = v.(OptString)
+		}
 	}
 	return params
 }
@@ -267,23 +269,28 @@ func decodeAuthorizeGetParams(args [0]string, argsEscaped bool, r *http.Request)
 
 		if err := q.HasParam(cfg); err == nil {
 			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
-				val, err := d.DecodeValue()
-				if err != nil {
+				var paramsDotNonceVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotNonceVal = c
+					return nil
+				}(); err != nil {
 					return err
 				}
-
-				c, err := conv.ToString(val)
-				if err != nil {
-					return err
-				}
-
-				params.Nonce = c
+				params.Nonce.SetTo(paramsDotNonceVal)
 				return nil
 			}); err != nil {
 				return err
 			}
-		} else {
-			return validate.ErrFieldRequired
 		}
 		return nil
 	}(); err != nil {

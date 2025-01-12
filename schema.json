@@ -95,56 +95,58 @@
         "/authorize": {
             "x-ogen-operation-group": "Authorization",
             "get": {
-                "description": "",
+                "description": "Authorize Endpoint",
                 "parameters": [
                     {
                         "in": "query",
                         "name": "response_type",
                         "required": true,
                         "schema": {
-                          "type": "string"
+                            "type": "string"
                         }
-                      },
-                      {
+                    },
+                    {
                         "in": "query",
                         "name": "client_id",
                         "required": true,
                         "schema": {
-                          "type": "string"
+                            "type": "string"
                         }
-                      },
-                      {
+                    },
+                    {
                         "in": "query",
                         "name": "scope",
                         "required": true,
                         "schema": {
-                          "type": "string"
+                            "type": "string"
                         }
-                      },
-                      {
+                    },
+                    {
                         "in": "query",
                         "name": "redirect_uri",
                         "required": true,
                         "schema": {
-                          "type": "string"
+                            "type": "string"
                         }
-                      },
-
-                      {
+                    },
+                    {
                         "in": "query",
                         "name": "state",
                         "schema": {
-                          "type": "string"
+                            "type": "string"
                         }
-                      },
-                      {
+                    },
+                    {
                         "in": "query",
                         "name": "nonce",
-                        "required": true,
                         "schema": {
-                          "type": "string"
+                            "type": "string"
                         }
-                      }
+                    }
+                ],
+                "security": [
+                    {},
+                    {"LoginCookie": []}
                 ],
                 "responses": {
                     "200": {
@@ -178,6 +180,36 @@
                     }
                 }
             }
+        },
+        "/me": {
+            "x-ogen-operation-group": "SelfService",
+            "get": {
+                "operationId": "Me",
+                "description": "View your own details",
+                "parameters": [],
+                "security": [
+                    {"LoginCookie": []},
+                    {"BearerAuth": []}
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Display details",
+                        "content": {
+                            "text/html": {}
+                        }
+                    },
+                    "default": {
+                        "description": "error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -186,6 +218,12 @@
                 "type": "http",
                 "scheme": "bearer",
                 "bearerFormat": "JWT"
+            },
+            "LoginCookie": {
+                "type": "apiKey",
+                "scheme:": "apiKey",
+                "in": "cookie",
+                "name": "SOIDC_AUTH"
             }
         },
         "schemas": {

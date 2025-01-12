@@ -10,6 +10,7 @@ import (
 	"github.com/klauspost/compress/gzhttp"
 
 	"github.com/kncept-oauth/simple-oidc/service/authorizer"
+	"github.com/kncept-oauth/simple-oidc/service/dispatcherauth"
 	"github.com/kncept-oauth/simple-oidc/service/gen/api"
 	"github.com/kncept-oauth/simple-oidc/service/webcontent"
 )
@@ -20,11 +21,14 @@ func NewApplication(daoSource DaoSource) (http.HandlerFunc, error) {
 	serveMux := http.NewServeMux()
 
 	serveMux.Handle("/snippet/", &snippetsHandler{})
-	server, err := api.NewServer(&dispatcherHandler{
-		authorizer: authorizer.NewAuthorizer(
-			daoSource.GetClientStore(),
-		),
-	})
+	server, err := api.NewServer(
+		&dispatcherHandler{
+			authorizer: authorizer.NewAuthorizer(
+				daoSource.GetClientStore(),
+			),
+		},
+		&dispatcherauth.Handler{},
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -74,8 +78,19 @@ func (obj *dispatcherHandler) Jwks(ctx context.Context) (*api.JWKSetResponse, er
 	return nil, errors.ErrUnsupported
 }
 func (obj *dispatcherHandler) OpenIdConfiguration(ctx context.Context) (*api.OpenIDProviderMetadataResponse, error) {
-	fmt.Printf("TODO: OpenIdConfiguration\n")
-	return nil, errors.ErrUnsupported
+	return &api.OpenIDProviderMetadataResponse{
+		Issuer:                "http://localhost:8080", // todo :/
+		AuthorizationEndpoint: "/authorize",
+		TokenEndpoint:         "todo",
+		JwksURI:               "/.well-known/jwks.json",
+	}, nil
+
+	// fmt.Printf("TODO: OpenIdConfiguration\n")
+	// return nil, errors.ErrUnsupported
+}
+
+func (obj *dispatcherHandler) Me(ctx context.Context) (api.MeOK, error) {
+	return api.MeOK{}, errors.ErrUnsupported
 }
 
 func (obj *dispatcherHandler) NewError(ctx context.Context, err error) *api.ErrRespStatusCode {

@@ -36,6 +36,20 @@ func (s AuthorizeGetOK) Read(p []byte) (n int, err error) {
 
 func (*AuthorizeGetOK) authorizeGetRes() {}
 
+type BearerAuth struct {
+	Token string
+}
+
+// GetToken returns the value of Token.
+func (s *BearerAuth) GetToken() string {
+	return s.Token
+}
+
+// SetToken sets the value of Token.
+func (s *BearerAuth) SetToken(val string) {
+	s.Token = val
+}
+
 // ErrRespStatusCode wraps string with StatusCode.
 type ErrRespStatusCode struct {
 	StatusCode int
@@ -203,6 +217,34 @@ func (s *JWKSetResponse) GetKeys() []JWKResponse {
 // SetKeys sets the value of Keys.
 func (s *JWKSetResponse) SetKeys(val []JWKResponse) {
 	s.Keys = val
+}
+
+type LoginCookie struct {
+	APIKey string
+}
+
+// GetAPIKey returns the value of APIKey.
+func (s *LoginCookie) GetAPIKey() string {
+	return s.APIKey
+}
+
+// SetAPIKey sets the value of APIKey.
+func (s *LoginCookie) SetAPIKey(val string) {
+	s.APIKey = val
+}
+
+type MeOK struct {
+	Data io.Reader
+}
+
+// Read reads data from the Data reader.
+//
+// Kept to satisfy the io.Reader interface.
+func (s MeOK) Read(p []byte) (n int, err error) {
+	if s.Data == nil {
+		return 0, io.EOF
+	}
+	return s.Data.Read(p)
 }
 
 // Ref: #/components/schemas/OpenIDProviderMetadataResponse

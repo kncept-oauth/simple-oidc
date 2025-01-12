@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	servicedao "github.com/kncept-oauth/simple-oidc/service/dao"
 	servicedispatcher "github.com/kncept-oauth/simple-oidc/service/dispatcher"
@@ -17,7 +18,7 @@ import (
 func main() {
 	var wg sync.WaitGroup
 
-	datastore := servicedao.NewFilesystemDao()
+	datastore := servicedao.NewMemoryDao()
 
 	// run a the application, with access to the underlying datastore
 	appPort := "8080"
@@ -38,6 +39,7 @@ func main() {
 		wg.Done()
 	}()
 
+	time.Sleep(1 * time.Second)
 	// run a test harness
 	app := dispatcher.NewApplication(datastore)
 	testHarnessPort := "3000"

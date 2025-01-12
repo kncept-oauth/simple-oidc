@@ -2,5 +2,8 @@ package webcontent
 
 import "embed"
 
-//go:embed *
-var Fs embed.FS
+//go:embed *.html
+var Views embed.FS
+
+//go:embed *.css
+var Static embed.FS

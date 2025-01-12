@@ -15,6 +15,8 @@ var _ Handler = UnimplementedHandler{}
 
 // AuthorizeGet implements GET /authorize operation.
 //
+// Authorize Endpoint.
+//
 // GET /authorize
 func (UnimplementedHandler) AuthorizeGet(ctx context.Context, params AuthorizeGetParams) (r AuthorizeGetRes, _ error) {
 	return r, ht.ErrNotImplemented
@@ -35,6 +37,15 @@ func (UnimplementedHandler) Index(ctx context.Context) (r IndexOK, _ error) {
 //
 // GET /.well-known/jwks.json
 func (UnimplementedHandler) Jwks(ctx context.Context) (r *JWKSetResponse, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// Me implements Me operation.
+//
+// View your own details.
+//
+// GET /me
+func (UnimplementedHandler) Me(ctx context.Context) (r MeOK, _ error) {
 	return r, ht.ErrNotImplemented
 }
 

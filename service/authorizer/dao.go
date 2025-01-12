@@ -22,8 +22,9 @@ type ClientStruct struct {
 }
 
 type ClientStore interface {
-	GetClient(clientId string) (Client, error)
+	Get(clientId string) (Client, error)
 	Save(client ClientStruct) error
+	List() ([]Client, error)
 }
 
 func (obj ClientStruct) GetClientId() string {

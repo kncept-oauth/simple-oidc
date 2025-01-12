@@ -145,6 +145,27 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 
 				elem = origElem
+			case 'm': // Prefix: "me"
+				origElem := elem
+				if l := len("me"); len(elem) >= l && elem[0:l] == "me" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch r.Method {
+					case "GET":
+						s.handleMeRequest([0]string{}, elemIsEscaped, w, r)
+					default:
+						s.notAllowed(w, r, "GET")
+					}
+
+					return
+				}
+
+				elem = origElem
 			}
 
 			elem = origElem
@@ -239,7 +260,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 			if len(elem) == 0 {
 				switch method {
 				case "GET":
-					r.name = "Index"
+					r.name = IndexOperation
 					r.summary = ""
 					r.operationID = "Index"
 					r.pathPattern = "/"
@@ -275,7 +296,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						// Leaf node.
 						switch method {
 						case "GET":
-							r.name = "Jwks"
+							r.name = JwksOperation
 							r.summary = ""
 							r.operationID = "jwks"
 							r.pathPattern = "/.well-known/jwks.json"
@@ -300,7 +321,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						// Leaf node.
 						switch method {
 						case "GET":
-							r.name = "OpenIdConfiguration"
+							r.name = OpenIdConfigurationOperation
 							r.summary = ""
 							r.operationID = "openIdConfiguration"
 							r.pathPattern = "/.well-known/openid-configuration"
@@ -328,10 +349,35 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					// Leaf node.
 					switch method {
 					case "GET":
-						r.name = "AuthorizeGet"
+						r.name = AuthorizeGetOperation
 						r.summary = ""
 						r.operationID = ""
 						r.pathPattern = "/authorize"
+						r.args = args
+						r.count = 0
+						return r, true
+					default:
+						return
+					}
+				}
+
+				elem = origElem
+			case 'm': // Prefix: "me"
+				origElem := elem
+				if l := len("me"); len(elem) >= l && elem[0:l] == "me" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch method {
+					case "GET":
+						r.name = MeOperation
+						r.summary = ""
+						r.operationID = "Me"
+						r.pathPattern = "/me"
 						r.args = args
 						r.count = 0
 						return r, true

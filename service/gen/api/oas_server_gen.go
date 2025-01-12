@@ -10,6 +10,7 @@ import (
 type Handler interface {
 	AuthorizationHandler
 	IndexHandler
+	SelfServiceHandler
 	WellKnownHandler
 	// NewError creates *ErrRespStatusCode from error returned by handler.
 	//
@@ -22,6 +23,8 @@ type Handler interface {
 // x-ogen-operation-group: Authorization
 type AuthorizationHandler interface {
 	// AuthorizeGet implements GET /authorize operation.
+	//
+	// Authorize Endpoint.
 	//
 	// GET /authorize
 	AuthorizeGet(ctx context.Context, params AuthorizeGetParams) (AuthorizeGetRes, error)
@@ -37,6 +40,18 @@ type IndexHandler interface {
 	//
 	// GET /
 	Index(ctx context.Context) (IndexOK, error)
+}
+
+// SelfServiceHandler handles operations described by OpenAPI v3 specification.
+//
+// x-ogen-operation-group: SelfService
+type SelfServiceHandler interface {
+	// Me implements Me operation.
+	//
+	// View your own details.
+	//
+	// GET /me
+	Me(ctx context.Context) (MeOK, error)
 }
 
 // WellKnownHandler handles operations described by OpenAPI v3 specification.
@@ -60,18 +75,20 @@ type WellKnownHandler interface {
 // Server implements http server based on OpenAPI v3 specification and
 // calls Handler to handle requests.
 type Server struct {
-	h Handler
+	h   Handler
+	sec SecurityHandler
 	baseServer
 }
 
 // NewServer creates new Server.
-func NewServer(h Handler, opts ...ServerOption) (*Server, error) {
+func NewServer(h Handler, sec SecurityHandler, opts ...ServerOption) (*Server, error) {
 	s, err := newServerConfig(opts...).baseServer()
 	if err != nil {
 		return nil, err
 	}
 	return &Server{
 		h:          h,
+		sec:        sec,
 		baseServer: s,
 	}, nil
 }
