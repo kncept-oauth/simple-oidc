@@ -27,14 +27,11 @@ I expect that this will switch to all-in before long
 todo - either golang or typescript... or bash...
 single script
 
-# Deployment (summary)
+# Deployment 
 1) Ensure your environment is set up
     * AWS Credentials (for default deployment)
     * URL Mount point details (to hook up to an existing aws Route53 zone)
-2) Build the binary: 
-    - `go generate cmd/gen/gen.go`
-    - `go build cmd/simple-oidc/bootstrap.go`
-3) Deploy infrastructure: Deployment is run via `npm run cdk deploy simple-oidc`
+2) Run the deploy script: `make deploy`
 
 # Usage or deployed service
 1) start off with an authorize reqeust!

@@ -4,8 +4,8 @@ FROM docker.io/ubuntu:25.04
 
 # consider lscr.io/linuxserver/code-server:latest
 
-RUN apt-get update
-RUN apt-get -y install sudo wget curl vim git
+RUN DEBIAN_FRONTEND=noninteractive apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get -y install sudo wget curl vim git
 
 # Locale injector
 # RUN \
@@ -33,6 +33,11 @@ ENV PATH=$PATH:$GOPATH/bin
 # export PATH=$PATH:$GOPATH/bin
 # export GOROOT=/usr/local/go
 ENV GOROOT=/usr/local/go
+
+
+# Install MAKE for the makefile
+RUN DEBIAN_FRONTEND=noninteractive \
+    apt-get -y install make 
 
 
 # User
