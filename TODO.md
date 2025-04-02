@@ -1,3 +1,11 @@
+accept_unauthenticated.html
+--> Register function
+then Login function
+
+
+accept_authenticated.html
+--> Logout function
+
 
 N.B. The application is meant to be pluggable.
 

@@ -1,0 +1,21 @@
+<html>
+    <head>
+        <title>Simple OIDC</title>
+    </head>
+    <body>
+        <h1>Simple OIDC</h1>
+
+        embedded:go 
+        {{ template "accept_summary.snippet" . }}
+
+        <p>Login or Register to Confirm Login</p>
+
+        <a href="/login">Login</a>
+        <a href="/register">Register</a>
+
+        <pre>
+            Login
+            Register
+        </pre>
+    </body>
+</html>

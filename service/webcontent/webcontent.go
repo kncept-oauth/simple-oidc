@@ -1,6 +1,8 @@
 package webcontent
 
-import "embed"
+import (
+	"embed"
+)
 
 //go:embed *
 var Fs embed.FS

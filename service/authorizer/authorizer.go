@@ -2,7 +2,6 @@ package authorizer
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"regexp"
@@ -44,19 +43,32 @@ func (obj Authorizer) AuthorizeGet(ctx context.Context, params api.AuthorizeGetP
 		return nil, fmt.Errorf("invalid redirect uri: %v", redirectUri)
 	}
 
-	fmt.Printf("now what\n")
-
 	// fetch simple-oidc(soidc) state cookie
 	loginCookie := dispatcherauth.GetLoginCookie(ctx)
 	if loginCookie != "" {
 		// validate
 		// handle logged in (must click to approve access)
 	}
-	// if they don't, then make them loginregister (TODO: according to client config)
+
+	// redirect to /accept endpoint - no zero click logins are allowed
+	redirectLocation := fmt.Sprintf(
+		"/accept?response_type=%s&client_id=%s&scope=%s&redirect_uri=%s",
+		params.ResponseType,
+		params.ClientID,
+		params.Scope,
+		params.RedirectURI,
+	)
+	if params.State.Set {
+		redirectLocation = fmt.Sprintf("%s&state=%s", redirectLocation, params.State.Value)
+	}
+	if params.Nonce.Set {
+		redirectLocation = fmt.Sprintf("%s&nonce=%s", redirectLocation, params.Nonce.Value)
+	}
+	return &api.AuthorizeGetFound{
+		Location: redirectLocation,
+	}, nil
 
 	// redirect to a login/auth page
-
-	return nil, errors.ErrUnsupported
 }
 
 func isValidRedirectUri(client Client, redirectUri string) bool {

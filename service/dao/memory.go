@@ -6,10 +6,22 @@ import (
 
 	"github.com/kncept-oauth/simple-oidc/service/authorizer"
 	"github.com/kncept-oauth/simple-oidc/service/dispatcher"
+	"github.com/kncept-oauth/simple-oidc/service/keys"
+	"github.com/kncept-oauth/simple-oidc/service/users"
 )
 
 type MemoryDao struct {
 	clientStore *memClientStore
+	keyStore    *memKeyStore
+	userStore   *memUserStore
+}
+
+// GetKeyStore implements dispatcher.DaoSource.
+func (obj *MemoryDao) GetKeyStore() keys.Keystore {
+	if obj.keyStore == nil {
+		obj.keyStore = &memKeyStore{}
+	}
+	return obj.keyStore
 }
 
 func NewMemoryDao() dispatcher.DaoSource {
@@ -23,14 +35,43 @@ func (obj *MemoryDao) GetClientStore() authorizer.ClientStore {
 	return obj.clientStore
 }
 
+func (obj *MemoryDao) GetUserStore() users.UserStore {
+	if obj.userStore == nil {
+		obj.userStore = &memUserStore{}
+	}
+	return obj.userStore
+}
+
 type memClientStore struct {
 	clients sync.Map
+}
+
+type memKeyStore struct {
+	keys sync.Map
+}
+
+type memUserStore struct {
+	users sync.Map
+}
+
+// GetKey implements keys.Keystore.
+func (m *memKeyStore) GetKey(kid string) (*keys.JwkKeypair, error) {
+	keypair, ok := m.keys.Load(kid)
+	if ok {
+		return keypair.(*keys.JwkKeypair), nil
+	}
+	return nil, nil
+}
+
+// SaveKey implements keys.Keystore.
+func (m *memKeyStore) SaveKey(keypair *keys.JwkKeypair) error {
+	m.keys.Store(keypair.Kid, keypair)
+	return nil
 }
 
 // GetClient implements authorizer.ClientStore.
 func (c *memClientStore) Get(clientId string) (authorizer.Client, error) {
 	client, ok := c.clients.Load(clientId)
-	fmt.Printf("loading client id %v\n", clientId)
 	if ok {
 		return client.(authorizer.Client), nil
 	}
@@ -59,4 +100,16 @@ func (c *memClientStore) List() ([]authorizer.Client, error) {
 		return true
 	})
 	return clients, nil
+}
+
+func (obj *memUserStore) GetUser(id string) (*users.OidcUser, error) {
+	val, ok := obj.users.Load(id)
+	if !ok {
+		return nil, nil
+	}
+	return val.(*users.OidcUser), nil
+}
+func (obj *memUserStore) SaveUser(user *users.OidcUser) error {
+	obj.users.Store(user.Id, user)
+	return nil
 }

@@ -62,14 +62,6 @@ func NewApplication(daoSource servicedispatcher.DaoSource) *fiber.App {
 
 	app.Get(fiberOidc.CallbackPath(), fiberOidc.CallbackHandler())
 
-	dirs, err := webcontent.Static.ReadDir(".")
-	if err != nil {
-		panic(err)
-	}
-	for _, dir := range dirs {
-		fmt.Printf("dir := %v\n", dir.Name())
-	}
-
 	app.Use("/static", filesystem.New(filesystem.Config{
 		Root:   http.FS(webcontent.Static),
 		Browse: true,

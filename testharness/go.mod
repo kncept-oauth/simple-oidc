@@ -7,9 +7,14 @@ toolchain go1.22.9
 replace github.com/kncept-oauth/simple-oidc/service => ../service
 
 require (
+	github.com/gofiber/fiber/v2 v2.52.6
+	github.com/gofiber/template/html/v2 v2.1.3
+	github.com/kncept-oauth/simple-oidc/service v0.0.0-00010101000000-000000000000
+	github.com/kncept/fiber-oidc v1.0.0
+)
+
+require (
 	github.com/andybalholm/brotli v1.1.1 // indirect
-	github.com/aws/aws-lambda-go v1.47.0 // indirect
-	github.com/awslabs/aws-lambda-go-api-proxy v0.16.2 // indirect
 	github.com/coreos/go-oidc/v3 v3.11.0 // indirect
 	github.com/dlclark/regexp2 v1.11.4 // indirect
 	github.com/fatih/color v1.18.0 // indirect
@@ -20,14 +25,10 @@ require (
 	github.com/go-jose/go-jose/v4 v4.0.2 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/gofiber/fiber/v2 v2.52.6 // indirect
 	github.com/gofiber/template v1.8.3 // indirect
-	github.com/gofiber/template/html/v2 v2.1.3 // indirect
 	github.com/gofiber/utils v1.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
-	github.com/kncept-oauth/simple-oidc/service v0.0.0-00010101000000-000000000000 // indirect
-	github.com/kncept/fiber-oidc v1.0.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect

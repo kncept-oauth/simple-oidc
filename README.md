@@ -33,5 +33,9 @@ single script
     * URL Mount point details (to hook up to an existing aws Route53 zone)
 2) Run the deploy script: `make deploy`
 
+# Development
+Run main.go from the testharness project
+`cd testharness && go run main.go`
+
 # Usage or deployed service
 1) start off with an authorize reqeust!

@@ -16,7 +16,30 @@ type AuthorizeGetBadRequestApplicationJSON string
 func (*AuthorizeGetBadRequestApplicationJSON) authorizeGetRes() {}
 
 // AuthorizeGetFound is response for AuthorizeGet operation.
-type AuthorizeGetFound struct{}
+type AuthorizeGetFound struct {
+	Location  string
+	SetCookie OptString
+}
+
+// GetLocation returns the value of Location.
+func (s *AuthorizeGetFound) GetLocation() string {
+	return s.Location
+}
+
+// GetSetCookie returns the value of SetCookie.
+func (s *AuthorizeGetFound) GetSetCookie() OptString {
+	return s.SetCookie
+}
+
+// SetLocation sets the value of Location.
+func (s *AuthorizeGetFound) SetLocation(val string) {
+	s.Location = val
+}
+
+// SetSetCookie sets the value of SetCookie.
+func (s *AuthorizeGetFound) SetSetCookie(val OptString) {
+	s.SetCookie = val
+}
 
 func (*AuthorizeGetFound) authorizeGetRes() {}
 
