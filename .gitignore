@@ -1,3 +1,6 @@
 
 deploy/bin/
 service/simple-oidc
+.vscode/
+testharness/server.crt
+testharness/server.key

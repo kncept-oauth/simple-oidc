@@ -35,7 +35,7 @@ single script
 
 # Development
 Run main.go from the testharness project
-`cd testharness && go run main.go`
+`./build.sh testharness`
 
 # Usage or deployed service
 1) start off with an authorize reqeust!

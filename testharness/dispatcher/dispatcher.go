@@ -2,6 +2,7 @@ package dispatcher
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/http"
 
@@ -20,9 +21,9 @@ import (
 func NewApplication(daoSource servicedispatcher.DaoSource) *fiber.App {
 	ctx := context.Background()
 	fmt.Printf("New Testharness Application\n")
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	viewEngine := html.NewFileSystem(http.FS(webcontent.Views), ".html")
-
 	viewEngine.AddFunc("Clients", func() []authorizer.Client {
 		clients, _ := daoSource.GetClientStore().List()
 		return clients
@@ -45,7 +46,7 @@ func NewApplication(daoSource servicedispatcher.DaoSource) *fiber.App {
 	daoSource.GetClientStore().Save(client)
 
 	fiberOidcConfig := &fiberoidc.Config{
-		Issuer:         "http://localhost:8080",
+		Issuer:         "https://localhost:8443",
 		ClientId:       client.ClientId,
 		ClientSecret:   "todo",
 		RedirectUri:    "http://localhost:3000/oauth2/callback",

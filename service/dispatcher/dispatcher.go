@@ -27,7 +27,7 @@ const CurrentOperationParamsCookieName = "so-current"
 const CurrentOperationNameCookieName = "so-op"
 const LoginJwtCookieName = "so-jwt"
 
-func NewApplication(daoSource DaoSource) (http.HandlerFunc, error) {
+func NewApplication(daoSource DaoSource, urlPrefix string) (http.HandlerFunc, error) {
 	fmt.Printf("NewApplication\n")
 
 	serveMux := http.NewServeMux()
@@ -40,11 +40,13 @@ func NewApplication(daoSource DaoSource) (http.HandlerFunc, error) {
 	serveMux.Handle("/accept", acceptOidcHandler.acceptLogin())
 	serveMux.Handle("/login", acceptOidcHandler.loginHandler())
 	serveMux.Handle("/register", acceptOidcHandler.registerHandler())
+
 	server, err := api.NewServer(
 		&oapiDispatcher{
 			authorizer: authorizer.NewAuthorizer(
 				daoSource.GetClientStore(),
 			),
+			Issuer: strings.TrimSuffix(urlPrefix, "/"),
 		},
 		&dispatcherauth.Handler{},
 	)
@@ -144,14 +146,19 @@ func (obj *acceptOidcHandler) acceptLogin() http.HandlerFunc {
 			updatedOidcParams := params.OidcParamsFromMap(stateMap)
 			soCurrent.Merge(updatedOidcParams)
 
-			http.SetCookie(res, &http.Cookie{
-				Name:     CurrentOperationParamsCookieName,
-				Value:    soCurrent.ToQueryParams(),
-				Path:     "/",
+			soCurrentCookie = &http.Cookie{
+				Name:  CurrentOperationParamsCookieName,
+				Value: soCurrent.ToQueryParams(),
+				// Path:     "/",
 				MaxAge:   15 * 60, // 15 min
 				HttpOnly: true,
 				SameSite: http.SameSiteStrictMode,
-			})
+			}
+			err = soCurrentCookie.Valid()
+			if err != nil {
+				fmt.Printf("invalid cookie: %v\n", err)
+			}
+			http.SetCookie(res, soCurrentCookie)
 			res.Header().Add("Location", "/accept")
 			res.WriteHeader(302)
 			return
@@ -305,6 +312,7 @@ func (obj *acceptOidcHandler) loginHandler() http.HandlerFunc {
 
 type oapiDispatcher struct {
 	authorizer authorizer.Authorizer
+	Issuer     string
 }
 
 func (obj *oapiDispatcher) AuthorizeGet(ctx context.Context, params api.AuthorizeGetParams) (api.AuthorizeGetRes, error) {
@@ -331,7 +339,8 @@ func (obj *oapiDispatcher) Jwks(ctx context.Context) (*api.JWKSetResponse, error
 }
 func (obj *oapiDispatcher) OpenIdConfiguration(ctx context.Context) (*api.OpenIDProviderMetadataResponse, error) {
 	return &api.OpenIDProviderMetadataResponse{
-		Issuer:                "http://localhost:8080", // todo :/
+		// Issuer:                "https://localhost:8443", // todo :/
+		Issuer:                obj.Issuer,
 		AuthorizationEndpoint: "/authorize",
 		TokenEndpoint:         "todo",
 		JwksURI:               "/.well-known/jwks.json",

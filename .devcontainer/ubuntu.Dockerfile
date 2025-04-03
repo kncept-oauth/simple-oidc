@@ -1,4 +1,4 @@
-FROM docker.io/ubuntu:25.04
+FROM docker.io/ubuntu:24.04
 # https://github.com/kncept/slog
 # DEBUGGING: docker build -f .devcontainer/ubuntu.Dockerfile -t ubuntu-dev . && docker run -it ubuntu-dev bash
 
@@ -49,16 +49,19 @@ WORKDIR /home/ubuntu
 # SHELL ["/bin/bash", "--login", "-c"]
 
 # install
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | bash
 RUN /bin/bash -c ". .nvm/nvm.sh && nvm install --lts"
 
 # Golang github 'insteadof' thingy
 RUN \
     echo "[url \"ssh://git@github.com/\"]" >> .gitconfig && \
     echo "        insteadOf = https://github.com/" >> .gitconfig
-# Golang gopls tool
-RUN go install golang.org/x/tools/gopls@v0.17.1
+
+# Golang Tools
+RUN go install golang.org/x/tools/gopls@v0.18.1
+RUN go install github.com/go-delve/delve/cmd/dlv@v1.24.1
+# RUN go install -v github.com/go-delve/delve/cmd/dlv@latest
 
 # protoc tool?
 #RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.34.2
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.6
