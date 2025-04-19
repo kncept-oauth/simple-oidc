@@ -49,7 +49,8 @@ func NewApplication(daoSource DaoSource, urlPrefix string) (http.HandlerFunc, er
 			authorizer: authorizer.NewAuthorizer(
 				daoSource.GetClientStore(),
 			),
-			Issuer: strings.TrimSuffix(urlPrefix, "/"),
+			Issuer:    strings.TrimSuffix(urlPrefix, "/"),
+			daoSource: daoSource,
 		},
 		&dispatcherauth.Handler{},
 	)
@@ -401,6 +402,7 @@ func (obj *acceptOidcHandler) loginHandler() http.HandlerFunc {
 type oapiDispatcher struct {
 	authorizer authorizer.Authorizer
 	Issuer     string
+	daoSource  DaoSource
 }
 
 func (obj *oapiDispatcher) AuthorizeGet(ctx context.Context, params api.AuthorizeGetParams) (api.AuthorizeGetRes, error) {
@@ -422,8 +424,36 @@ func (obj *oapiDispatcher) LoginGet(ctx context.Context) error {
 	return errors.ErrUnsupported
 }
 func (obj *oapiDispatcher) Jwks(ctx context.Context) (*api.JWKSetResponse, error) {
-	fmt.Printf("TODO: Jwks\n")
-	return nil, errors.ErrUnsupported
+	keyStore := obj.daoSource.GetKeyStore()
+	keys, err := keyStore.ListKeys()
+	if err != nil {
+		return nil, err
+	}
+	responseKeys := make([]api.JWKResponse, 0)
+	for _, kid := range keys {
+		key, err := keyStore.GetKey(kid)
+		if err != nil {
+			return nil, err
+		}
+		jwkKey := key.ToJwkDetails()
+		switch jwkKey.Kty {
+		case "RSA":
+			responseKeys = append(responseKeys, api.JWKResponse{
+				Kty: api.NewOptString(jwkKey.Kty),
+				Kid: api.NewOptString(jwkKey.Kid),
+				Use: api.NewOptString(jwkKey.Use),
+				Alg: api.NewOptString(jwkKey.Alg),
+				N:   api.NewOptString(jwkKey.N),
+				E:   api.NewOptString(jwkKey.E),
+			})
+		default:
+			panic("unable to make key type of " + key.Kty)
+		}
+
+	}
+	return &api.JWKSetResponse{
+		Keys: responseKeys,
+	}, nil
 }
 func (obj *oapiDispatcher) OpenIdConfiguration(ctx context.Context) (*api.OpenIDProviderMetadataResponse, error) {
 	return &api.OpenIDProviderMetadataResponse{

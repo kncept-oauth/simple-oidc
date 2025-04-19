@@ -114,6 +114,15 @@ func GenerateJwkKeypair(asof ...time.Time) (*JwkKeypair, error) {
 	}, nil
 }
 
+func (key *JwkKeypair) ToJwkDetails() *JwkDetails {
+	switch key.Kty {
+	case "RSA":
+		return JwkFromRsa(key.Kid, &key.Rsa.PublicKey)
+	default:
+		panic("unable to convert to JwkDetails: " + key.Kty)
+	}
+}
+
 // used for PUBLIC keys only.
 type JwkDetails struct {
 	Kty string `json:"kty"` // "RSA" "EC"
@@ -239,17 +248,16 @@ func PemEncodeRsaPublic(key *rsa.PublicKey) string {
 }
 
 func JwkFromRsa(keyId string, key *rsa.PublicKey) *JwkDetails {
-	fmt.Printf("rsa.Size() %v\n", key.Size())
 	e := base64.RawURLEncoding.EncodeToString(big.NewInt(int64(key.E)).Bytes())
 	n := base64.RawURLEncoding.EncodeToString(key.N.Bytes())
 	return &JwkDetails{
 		Kty: "RSA",
 		Kid: keyId,
 		Use: "sig",
-
 		Alg: "RS512",
-		N:   n,
-		E:   e,
+
+		N: n,
+		E: e,
 	}
 }
 func JwkFromEcDSA(keyId string, key *ecdsa.PublicKey) *JwkDetails {
@@ -271,6 +279,7 @@ func JwkFromEcDSA(keyId string, key *ecdsa.PublicKey) *JwkDetails {
 		Kty: "EC",
 		Kid: keyId,
 		Use: "sig",
+		Alg: "EC",
 
 		Crv: crv,
 		X:   x,
