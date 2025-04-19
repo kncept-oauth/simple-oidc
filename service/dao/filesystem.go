@@ -93,15 +93,15 @@ func (f *fsKeyStore) ListKeys() ([]string, error) {
 	panic("unimplemented")
 }
 
-func (c *fsClientStore) Get(clientId string) (authorizer.Client, error) {
+func (c *fsClientStore) GetClient(clientId string) (authorizer.Client, error) {
 	panic("unimplemented")
 }
 
-func (c *fsClientStore) Save(client authorizer.ClientStruct) error {
+func (c *fsClientStore) SaveClient(client authorizer.ClientStruct) error {
 	panic("unimplemented")
 }
 
-func (c *fsClientStore) List() ([]authorizer.Client, error) {
+func (c *fsClientStore) ListClients() ([]authorizer.Client, error) {
 	panic("unimplemented")
 }
 
@@ -112,9 +112,9 @@ func (c *fsUserStore) SaveUser(user *users.OidcUser) error {
 	panic("unimplemented")
 }
 
-func (c *fsSessionStore) Save(session *session.Session) error {
+func (c *fsSessionStore) SaveSession(session *session.Session) error {
 	panic("unimplemented")
 }
-func (c *fsSessionStore) Load(sessionId string) (*session.Session, error) {
+func (c *fsSessionStore) LoadSession(sessionId string) (*session.Session, error) {
 	panic("unimplemented")
 }

@@ -325,7 +325,7 @@ func (obj *acceptOidcHandler) registerHandler() http.HandlerFunc {
 
 			// create a simple-oidc session
 			ses := session.NewSession(user.Id)
-			err = obj.daoSource.GetSessionStore().Save(ses)
+			err = obj.daoSource.GetSessionStore().SaveSession(ses)
 			if err != nil {
 				obj.respondWithTemplate("register.html", 500, res, map[string]any{
 					"err": err,
@@ -381,7 +381,7 @@ func (obj *acceptOidcHandler) loginHandler() http.HandlerFunc {
 
 		// todo: load customisation by client id
 		clientId := req.URL.Query().Get("client_id")
-		client, err := obj.daoSource.GetClientStore().Get(clientId)
+		client, err := obj.daoSource.GetClientStore().GetClient(clientId)
 		if err == nil {
 			fmt.Printf("client %v\n", client)
 		} else {

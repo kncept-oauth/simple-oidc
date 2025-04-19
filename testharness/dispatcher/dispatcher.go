@@ -25,7 +25,7 @@ func NewApplication(daoSource servicedispatcher.DaoSource) *fiber.App {
 
 	viewEngine := html.NewFileSystem(http.FS(webcontent.Views), ".html")
 	viewEngine.AddFunc("Clients", func() []authorizer.Client {
-		clients, _ := daoSource.GetClientStore().List()
+		clients, _ := daoSource.GetClientStore().ListClients()
 		return clients
 	})
 
@@ -44,7 +44,7 @@ func NewApplication(daoSource servicedispatcher.DaoSource) *fiber.App {
 		},
 		// ClientSecret: uuid.NewString(),
 	}
-	daoSource.GetClientStore().Save(client)
+	daoSource.GetClientStore().SaveClient(client)
 
 	fiberOidcConfig := &fiberoidc.Config{
 		Issuer:         "https://localhost:8443",

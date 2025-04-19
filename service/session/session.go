@@ -78,8 +78,8 @@ type RefreshTokenJwt struct {
 }
 
 type SessionStore interface {
-	Save(session *Session) error
-	Load(sessionId string) (*Session, error)
+	SaveSession(session *Session) error
+	LoadSession(sessionId string) (*Session, error)
 }
 
 func NewSession(userId string) *Session {

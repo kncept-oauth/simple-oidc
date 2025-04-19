@@ -12,18 +12,15 @@ import (
 )
 
 type MemoryDao struct {
-	clientStore  *memClientStore
-	keyStore     *memKeyStore
-	userStore    *memUserStore
-	sessionStore *memSessionStore
+	clients  sync.Map
+	keys     sync.Map
+	users    sync.Map
+	sessions sync.Map
 }
 
 // GetKeyStore implements dispatcher.DaoSource.
 func (obj *MemoryDao) GetKeyStore() keys.Keystore {
-	if obj.keyStore == nil {
-		obj.keyStore = &memKeyStore{}
-	}
-	return obj.keyStore
+	return obj
 }
 
 func NewMemoryDao() dispatcher.DaoSource {
@@ -31,45 +28,20 @@ func NewMemoryDao() dispatcher.DaoSource {
 }
 
 func (obj *MemoryDao) GetClientStore() authorizer.ClientStore {
-	if obj.clientStore == nil {
-		obj.clientStore = &memClientStore{}
-	}
-	return obj.clientStore
+	return obj
 }
 
 func (obj *MemoryDao) GetUserStore() users.UserStore {
-	if obj.userStore == nil {
-		obj.userStore = &memUserStore{}
-	}
-	return obj.userStore
+	return obj
 }
 
 func (obj *MemoryDao) GetSessionStore() session.SessionStore {
-	if obj.sessionStore == nil {
-		obj.sessionStore = &memSessionStore{}
-	}
-	return obj.sessionStore
-}
-
-type memClientStore struct {
-	clients sync.Map
-}
-
-type memKeyStore struct {
-	keys sync.Map
-}
-
-type memUserStore struct {
-	users sync.Map
-}
-
-type memSessionStore struct {
-	sessions sync.Map
+	return obj
 }
 
 // GetKey implements keys.Keystore.
-func (m *memKeyStore) GetKey(kid string) (*keys.JwkKeypair, error) {
-	keypair, ok := m.keys.Load(kid)
+func (obj *MemoryDao) GetKey(kid string) (*keys.JwkKeypair, error) {
+	keypair, ok := obj.keys.Load(kid)
 	if ok {
 		return keypair.(*keys.JwkKeypair), nil
 	}
@@ -77,14 +49,14 @@ func (m *memKeyStore) GetKey(kid string) (*keys.JwkKeypair, error) {
 }
 
 // SaveKey implements keys.Keystore.
-func (m *memKeyStore) SaveKey(keypair *keys.JwkKeypair) error {
-	m.keys.Store(keypair.Kid, keypair)
+func (obj *MemoryDao) SaveKey(keypair *keys.JwkKeypair) error {
+	obj.keys.Store(keypair.Kid, keypair)
 	return nil
 }
 
-func (m *memKeyStore) ListKeys() ([]string, error) {
+func (obj *MemoryDao) ListKeys() ([]string, error) {
 	keys := make([]string, 0)
-	m.keys.Range(func(key any, _ any) bool {
+	obj.keys.Range(func(key any, _ any) bool {
 		keys = append(keys, key.(string))
 		return true
 	})
@@ -92,8 +64,8 @@ func (m *memKeyStore) ListKeys() ([]string, error) {
 }
 
 // GetClient implements authorizer.ClientStore.
-func (c *memClientStore) Get(clientId string) (authorizer.Client, error) {
-	client, ok := c.clients.Load(clientId)
+func (obj *MemoryDao) GetClient(clientId string) (authorizer.Client, error) {
+	client, ok := obj.clients.Load(clientId)
 	if ok {
 		return client.(authorizer.Client), nil
 	}
@@ -101,21 +73,21 @@ func (c *memClientStore) Get(clientId string) (authorizer.Client, error) {
 }
 
 // Save implements authorizer.ClientStore.
-func (c *memClientStore) Save(client authorizer.ClientStruct) error {
-	existing, err := c.Get(client.ClientId)
+func (obj *MemoryDao) SaveClient(client authorizer.ClientStruct) error {
+	existing, err := obj.GetClient(client.ClientId)
 	if err != nil {
 		return err
 	}
 	if existing != nil {
 		return fmt.Errorf("client already exists: %v", client.ClientId)
 	}
-	c.clients.Store(client.ClientId, client)
+	obj.clients.Store(client.ClientId, client)
 	return nil
 }
 
-func (c *memClientStore) List() ([]authorizer.Client, error) {
+func (obj *MemoryDao) ListClients() ([]authorizer.Client, error) {
 	clients := make([]authorizer.Client, 0)
-	c.clients.Range(func(key, value any) bool {
+	obj.clients.Range(func(key, value any) bool {
 		if client, ok := value.(authorizer.Client); ok {
 			clients = append(clients, client)
 		}
@@ -124,23 +96,23 @@ func (c *memClientStore) List() ([]authorizer.Client, error) {
 	return clients, nil
 }
 
-func (obj *memUserStore) GetUser(id string) (*users.OidcUser, error) {
+func (obj *MemoryDao) GetUser(id string) (*users.OidcUser, error) {
 	val, ok := obj.users.Load(id)
 	if !ok {
 		return nil, nil
 	}
 	return val.(*users.OidcUser), nil
 }
-func (obj *memUserStore) SaveUser(user *users.OidcUser) error {
+func (obj *MemoryDao) SaveUser(user *users.OidcUser) error {
 	obj.users.Store(user.Id, user)
 	return nil
 }
 
-func (obj *memSessionStore) Save(session *session.Session) error {
+func (obj *MemoryDao) SaveSession(session *session.Session) error {
 	obj.sessions.Store(session.SessionId, session)
 	return nil
 }
-func (obj *memSessionStore) Load(sessionId string) (*session.Session, error) {
+func (obj *MemoryDao) LoadSession(sessionId string) (*session.Session, error) {
 	sessionObj, _ := obj.sessions.Load(sessionId)
 	return sessionObj.(*session.Session), nil
 }

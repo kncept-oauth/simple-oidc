@@ -30,8 +30,8 @@ func TestCanConvertToJwksAndBack(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	jwk := RsaToJwk(NewKeyId("test"), &key.PublicKey)
-	publicKey, err := jwk.ToPublicKey()
+	jwk := JwkFromRsa(NewKeyId("test"), &key.PublicKey)
+	publicKey, err := jwk.ToRsaPublicKey()
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
