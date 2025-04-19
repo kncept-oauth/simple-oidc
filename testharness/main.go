@@ -38,7 +38,7 @@ func main() {
 	testHarnessPort := "3000"
 
 	go func() {
-		fmt.Printf("Starting Testharness on http://127.0.0.1:%s/\n", testHarnessPort)
+		fmt.Printf("Starting Testharness on http://localhost:%s/\n", testHarnessPort)
 		if err := app.Listen(":" + testHarnessPort); err != nil {
 			panic(err)
 		}
