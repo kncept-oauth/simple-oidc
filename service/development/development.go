@@ -57,6 +57,7 @@ func RunLocally(daoSource dispatcher.DaoSource, urlPrefix string) (*http.Server,
 			InsecureSkipVerify: true,
 			Certificates:       []tls.Certificate{cert},
 		},
+		MaxHeaderBytes: 4096 * 4,
 	}
 
 	go func() {

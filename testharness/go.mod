@@ -16,6 +16,7 @@ require (
 require (
 	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/coreos/go-oidc/v3 v3.11.0 // indirect
+	github.com/cristalhq/jwt/v5 v5.4.0 // indirect
 	github.com/dlclark/regexp2 v1.11.4 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect

@@ -8,6 +8,7 @@ import (
 	"github.com/kncept-oauth/simple-oidc/service/authorizer"
 	"github.com/kncept-oauth/simple-oidc/service/dispatcher"
 	"github.com/kncept-oauth/simple-oidc/service/keys"
+	"github.com/kncept-oauth/simple-oidc/service/session"
 	"github.com/kncept-oauth/simple-oidc/service/users"
 )
 
@@ -31,6 +32,12 @@ func (obj *FilesystemDao) GetClientStore() authorizer.ClientStore {
 func (obj *FilesystemDao) GetUserStore() users.UserStore {
 	return &fsUserStore{
 		RootDir: path.Join(obj.RootDir, "users"),
+	}
+}
+
+func (obj *FilesystemDao) GetSessionStore() session.SessionStore {
+	return &fsSessionStore{
+		RootDir: path.Join(obj.RootDir, "session"),
 	}
 }
 
@@ -68,6 +75,10 @@ type fsUserStore struct {
 	RootDir string
 }
 
+type fsSessionStore struct {
+	RootDir string
+}
+
 // GetKey implements keys.Keystore.
 func (f *fsKeyStore) GetKey(kid string) (*keys.JwkKeypair, error) {
 	panic("unimplemented")
@@ -75,6 +86,10 @@ func (f *fsKeyStore) GetKey(kid string) (*keys.JwkKeypair, error) {
 
 // SaveKey implements keys.Keystore.
 func (f *fsKeyStore) SaveKey(keypair *keys.JwkKeypair) error {
+	panic("unimplemented")
+}
+
+func (f *fsKeyStore) ListKeys() ([]string, error) {
 	panic("unimplemented")
 }
 
@@ -94,5 +109,12 @@ func (c *fsUserStore) GetUser(id string) (*users.OidcUser, error) {
 	panic("unimplemented")
 }
 func (c *fsUserStore) SaveUser(user *users.OidcUser) error {
+	panic("unimplemented")
+}
+
+func (c *fsSessionStore) Save(session *session.Session) error {
+	panic("unimplemented")
+}
+func (c *fsSessionStore) Load(sessionId string) (*session.Session, error) {
 	panic("unimplemented")
 }

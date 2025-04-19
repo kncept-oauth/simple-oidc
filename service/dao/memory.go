@@ -7,13 +7,15 @@ import (
 	"github.com/kncept-oauth/simple-oidc/service/authorizer"
 	"github.com/kncept-oauth/simple-oidc/service/dispatcher"
 	"github.com/kncept-oauth/simple-oidc/service/keys"
+	"github.com/kncept-oauth/simple-oidc/service/session"
 	"github.com/kncept-oauth/simple-oidc/service/users"
 )
 
 type MemoryDao struct {
-	clientStore *memClientStore
-	keyStore    *memKeyStore
-	userStore   *memUserStore
+	clientStore  *memClientStore
+	keyStore     *memKeyStore
+	userStore    *memUserStore
+	sessionStore *memSessionStore
 }
 
 // GetKeyStore implements dispatcher.DaoSource.
@@ -42,6 +44,13 @@ func (obj *MemoryDao) GetUserStore() users.UserStore {
 	return obj.userStore
 }
 
+func (obj *MemoryDao) GetSessionStore() session.SessionStore {
+	if obj.sessionStore == nil {
+		obj.sessionStore = &memSessionStore{}
+	}
+	return obj.sessionStore
+}
+
 type memClientStore struct {
 	clients sync.Map
 }
@@ -52,6 +61,10 @@ type memKeyStore struct {
 
 type memUserStore struct {
 	users sync.Map
+}
+
+type memSessionStore struct {
+	sessions sync.Map
 }
 
 // GetKey implements keys.Keystore.
@@ -67,6 +80,15 @@ func (m *memKeyStore) GetKey(kid string) (*keys.JwkKeypair, error) {
 func (m *memKeyStore) SaveKey(keypair *keys.JwkKeypair) error {
 	m.keys.Store(keypair.Kid, keypair)
 	return nil
+}
+
+func (m *memKeyStore) ListKeys() ([]string, error) {
+	keys := make([]string, 0)
+	m.keys.Range(func(key any, _ any) bool {
+		keys = append(keys, key.(string))
+		return true
+	})
+	return keys, nil
 }
 
 // GetClient implements authorizer.ClientStore.
@@ -112,4 +134,13 @@ func (obj *memUserStore) GetUser(id string) (*users.OidcUser, error) {
 func (obj *memUserStore) SaveUser(user *users.OidcUser) error {
 	obj.users.Store(user.Id, user)
 	return nil
+}
+
+func (obj *memSessionStore) Save(session *session.Session) error {
+	obj.sessions.Store(session.SessionId, session)
+	return nil
+}
+func (obj *memSessionStore) Load(sessionId string) (*session.Session, error) {
+	sessionObj, _ := obj.sessions.Load(sessionId)
+	return sessionObj.(*session.Session), nil
 }

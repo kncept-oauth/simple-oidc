@@ -2,37 +2,52 @@ package dispatcher
 
 import (
 	"context"
-	"embed"
 	"errors"
 	"fmt"
 	"html/template"
-	"io"
-	"io/fs"
 	"net/http"
 	"strings"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/klauspost/compress/gzhttp"
 
 	"github.com/kncept-oauth/simple-oidc/service/authorizer"
 	"github.com/kncept-oauth/simple-oidc/service/dispatcherauth"
 	"github.com/kncept-oauth/simple-oidc/service/gen/api"
+	"github.com/kncept-oauth/simple-oidc/service/jwtutil"
+	"github.com/kncept-oauth/simple-oidc/service/keys"
 	"github.com/kncept-oauth/simple-oidc/service/params"
+	"github.com/kncept-oauth/simple-oidc/service/session"
+	"github.com/kncept-oauth/simple-oidc/service/users"
 	"github.com/kncept-oauth/simple-oidc/service/webcontent"
-
-	"github.com/golang-jwt/jwt/v5"
 )
 
 const CurrentOperationParamsCookieName = "so-current"
 const CurrentOperationNameCookieName = "so-op"
+
 const LoginJwtCookieName = "so-jwt"
+const LoginRefreshTokenCookieName = "so-ts"
+
+var TESTKEYID string = uuid.NewString()
 
 func NewApplication(daoSource DaoSource, urlPrefix string) (http.HandlerFunc, error) {
-	fmt.Printf("NewApplication\n")
+	fmt.Printf("NewApplication: %v\n", urlPrefix)
+
+	keyPair, err := keys.GenerateJwkKeypair()
+	if err != nil {
+		return nil, err
+	}
+	keyPair.Kid = TESTKEYID
+	err = daoSource.GetKeyStore().SaveKey(keyPair)
+	if err != nil {
+		return nil, err
+	}
 
 	serveMux := http.NewServeMux()
 
 	acceptOidcHandler := acceptOidcHandler{
+		urlPrefix: urlPrefix,
 		daoSource: daoSource,
 	}
 
@@ -40,6 +55,8 @@ func NewApplication(daoSource DaoSource, urlPrefix string) (http.HandlerFunc, er
 	serveMux.Handle("/accept", acceptOidcHandler.acceptLogin())
 	serveMux.Handle("/login", acceptOidcHandler.loginHandler())
 	serveMux.Handle("/register", acceptOidcHandler.registerHandler())
+	serveMux.Handle("/me", acceptOidcHandler.myAccountHandler()) // TODO: Redirect to /account (or /login)
+	serveMux.Handle("/account", acceptOidcHandler.myAccountHandler())
 
 	server, err := api.NewServer(
 		&oapiDispatcher{
@@ -60,7 +77,20 @@ func NewApplication(daoSource DaoSource, urlPrefix string) (http.HandlerFunc, er
 
 type acceptOidcHandler struct {
 	daoSource DaoSource
+	urlPrefix string
+
 	templates sync.Map // map[string]*template.Template
+}
+
+func (obj *acceptOidcHandler) myAccountHandler() http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		claims := obj.userClaims(req)
+		if claims == nil {
+			res.Header().Add("Location", "/accept")
+			res.WriteHeader(302)
+		}
+		obj.respondWithTemplate("account.html", 200, res, params.QueryParamsToMap(req.URL))
+	}
 }
 
 func (obj *acceptOidcHandler) snippetHandler() http.HandlerFunc {
@@ -71,7 +101,7 @@ func (obj *acceptOidcHandler) snippetHandler() http.HandlerFunc {
 			res.WriteHeader(404)
 			return
 		}
-		obj.respondWithFile(fmt.Sprintf("/snippet/%v", snippet), 200, res, params.QueryParamsToMap(req.URL))
+		obj.respondWithTemplate(fmt.Sprintf("/snippet/%v", snippet), 200, res, params.QueryParamsToMap(req.URL))
 	}
 }
 
@@ -80,14 +110,10 @@ func (obj *acceptOidcHandler) userId(req *http.Request) string {
 	if claims == nil {
 		return ""
 	}
-	sub, err := claims.GetSubject()
-	if err != nil {
-		return sub
-	}
-	return ""
+	return claims.Sub
 }
 
-func (obj *acceptOidcHandler) userClaims(req *http.Request) jwt.Claims {
+func (obj *acceptOidcHandler) userClaims(req *http.Request) *session.AuthTokenJwt {
 	soJwt, err := req.Cookie(LoginJwtCookieName) // Simple Oidc Session JWT (if present)
 	if err != nil {
 		return nil
@@ -95,32 +121,21 @@ func (obj *acceptOidcHandler) userClaims(req *http.Request) jwt.Claims {
 	if soJwt == nil {
 		return nil
 	}
-	token, err := jwt.Parse(strings.TrimSpace(soJwt.Value), func(token *jwt.Token) (interface{}, error) {
-		kid, ok := token.Header["kid"]
-		if !ok || kid == "" {
-			return nil, nil
-		}
-
-		// audiences, err := token.Claims.GetAudience()
-		// if err != nil {
-		// 	return nil, err
-		// }
-		// if len(audiences) != 1 || audiences[0] != "simple-oidc" { // this needs to be an ENV VAR
-		// 	return nil, nil
-		// }
-
-		// fetch key by id
-		keyStore := obj.daoSource.GetKeyStore()
-		keypair, err := keyStore.GetKey(kid.(string))
-		if err != nil {
-			return nil, err
-		}
-		return keypair.Pvt, nil
-	})
-	if err == nil && token != nil {
-		return token.Claims
+	kid := jwtutil.JwtKeyId(soJwt.Value)
+	if kid == "" {
+		return nil
 	}
-	return nil
+	key, err := obj.daoSource.GetKeyStore().GetKey(kid)
+	if err != nil || key == nil {
+		return nil
+	}
+	session := &session.AuthTokenJwt{}
+	err = jwtutil.JwtToClaims(soJwt.Value, &key.Rsa.PublicKey, session)
+	if err != nil {
+		return nil
+	}
+	return session
+
 }
 
 func (obj *acceptOidcHandler) acceptLogin() http.HandlerFunc {
@@ -152,11 +167,7 @@ func (obj *acceptOidcHandler) acceptLogin() http.HandlerFunc {
 				// Path:     "/",
 				MaxAge:   15 * 60, // 15 min
 				HttpOnly: true,
-				SameSite: http.SameSiteStrictMode,
-			}
-			err = soCurrentCookie.Valid()
-			if err != nil {
-				fmt.Printf("invalid cookie: %v\n", err)
+				SameSite: http.SameSiteDefaultMode,
 			}
 			http.SetCookie(res, soCurrentCookie)
 			res.Header().Add("Location", "/accept")
@@ -165,6 +176,7 @@ func (obj *acceptOidcHandler) acceptLogin() http.HandlerFunc {
 		}
 
 		if !soCurrent.IsValid() {
+			// TODO: Send to an 'invalid state' page (unrecoverable)
 			res.WriteHeader(400)
 			return
 		}
@@ -180,13 +192,13 @@ func (obj *acceptOidcHandler) acceptLogin() http.HandlerFunc {
 		userId := obj.userId(req)
 		if userId != "" {
 			if req.Method == http.MethodGet {
-				obj.respondWithFile("accept_authenticated.html", 200, res, params.QueryParamsToMap(req.URL))
+				obj.respondWithTemplate("accept_authenticated.html", 200, res, params.QueryParamsToMap(req.URL))
 				return
 			}
 			// handle POST action (logout of account, )
 		} else {
 			if req.Method == http.MethodGet {
-				obj.respondWithFile("accept_unauthenticated.html", 200, res, params.QueryParamsToMap(req.URL))
+				obj.respondWithTemplate("accept_unauthenticated.html", 200, res, params.QueryParamsToMap(req.URL))
 				return
 			}
 		}
@@ -195,25 +207,25 @@ func (obj *acceptOidcHandler) acceptLogin() http.HandlerFunc {
 	}
 }
 
-func printDir(fs embed.FS, prefix string, dirs []fs.DirEntry, err error) {
-	if err != nil {
-		fmt.Printf("err: %v\n", err)
-		return
-	}
-	for _, dir := range dirs {
-		name := fmt.Sprintf("%v/%v", prefix, dir.Name())
-		if prefix == "" {
-			name = dir.Name()
-		}
-		if dir.IsDir() {
-			fmt.Printf("%v/\n", name)
-			dirs, err = fs.ReadDir(name)
-			printDir(fs, name, dirs, err)
-		} else {
-			fmt.Printf("%v\n", name)
-		}
-	}
-}
+// func printDir(fs embed.FS, prefix string, dirs []fs.DirEntry, err error) {
+// 	if err != nil {
+// 		fmt.Printf("err: %v\n", err)
+// 		return
+// 	}
+// 	for _, dir := range dirs {
+// 		name := fmt.Sprintf("%v/%v", prefix, dir.Name())
+// 		if prefix == "" {
+// 			name = dir.Name()
+// 		}
+// 		if dir.IsDir() {
+// 			fmt.Printf("%v/\n", name)
+// 			dirs, err = fs.ReadDir(name)
+// 			printDir(fs, name, dirs, err)
+// 		} else {
+// 			fmt.Printf("%v\n", name)
+// 		}
+// 	}
+// }
 
 func (obj *acceptOidcHandler) template(filename string) *template.Template {
 	t, ok := obj.templates.Load("_")
@@ -221,9 +233,9 @@ func (obj *acceptOidcHandler) template(filename string) *template.Template {
 		return t.(*template.Template)
 	}
 
-	dirs, err := webcontent.Fs.ReadDir(".")
-	printDir(webcontent.Fs, "", dirs, err)
-	fmt.Printf("__\n\n")
+	// dirs, err := webcontent.Fs.ReadDir(".")
+	// printDir(webcontent.Fs, "", dirs, err)
+	// fmt.Printf("__\n\n")
 
 	templ, err := template.New(filename).ParseFS(webcontent.Fs, "*.html", "snippet/*.html", "*.snippet")
 	if err != nil {
@@ -233,7 +245,7 @@ func (obj *acceptOidcHandler) template(filename string) *template.Template {
 	return templ
 }
 
-func (obj *acceptOidcHandler) respondWithFile(filename string, statusCode int, res http.ResponseWriter, data any) {
+func (obj *acceptOidcHandler) respondWithTemplate(filename string, statusCode int, res http.ResponseWriter, data any) {
 	t := obj.template(filename)
 	res.Header().Add("Content-Type", "text/html")
 	// TODO: configurable option - execute template before writing to stream
@@ -243,43 +255,130 @@ func (obj *acceptOidcHandler) respondWithFile(filename string, statusCode int, r
 	if err != nil {
 		fmt.Printf("%v", err)
 	}
-	return
-
 }
+
+// func (obj *acceptOidcHandler) respondWithStaticFile(filename string, statusCode int, res http.ResponseWriter) {
+// 	file, err := webcontent.Fs.Open(filename)
+// 	if err == nil {
+// 		fileContent, err := io.ReadAll(file)
+// 		if err == nil {
+// 			res.Header().Add("Content-Type", "text/html")
+// 			res.WriteHeader(statusCode)
+// 			res.Write(fileContent)
+// 			return
+// 		}
+// 	}
+// }
 
 func (obj *acceptOidcHandler) registerHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		// todo: load customisation by client id
-		clientId := req.URL.Query().Get("client_id")
-		client, err := obj.daoSource.GetClientStore().Get(clientId)
-		if err == nil {
-			fmt.Printf("client %v\n", client)
-		} else {
-			fmt.Printf("error fetching client %v\n", err)
+		claims := obj.userClaims(req)
+		if claims != nil {
+			res.Header().Add("Location", "/account")
+			res.WriteHeader(302)
+			return
 		}
 
 		if req.Method == http.MethodGet {
-			file, err := webcontent.Fs.Open("register.html")
-			if err == nil {
-				fileContent, err := io.ReadAll(file)
-				if err == nil {
-					res.Header().Add("Content-Type", "text/html")
-					res.WriteHeader(200)
-					res.Write(fileContent)
-					return
-				}
-			}
+			obj.respondWithTemplate("register.html", 200, res, nil)
+			return
 		}
 		if req.Method == http.MethodPost {
 			// handle LOGIN (or REGISTRATION)
 			//
+			req.ParseForm()
+
+			userService := &users.UserService{
+				UserStore: obj.daoSource.GetUserStore(),
+			}
+
+			username := req.Form.Get("username")
+			password := req.Form.Get("password")
+
+			user, err := userService.AttemptUserRegistration(username, password)
+			if errors.Is(err, users.ErrUserExists) {
+				obj.respondWithTemplate("register.html", 400, res, map[string]any{
+					"err": "user already exists",
+				})
+				return
+			} else if err != nil {
+				obj.respondWithTemplate("register.html", 500, res, map[string]any{
+					"err": err,
+				})
+				return
+			}
+			if user == nil {
+				obj.respondWithTemplate("register.html", 400, res, map[string]any{
+					"err": "unable to create user",
+				})
+				return
+			}
+
+			// key, err = keys.GetLatestKey(obj.daoSource.GetKeyStore())
+			key, err := obj.daoSource.GetKeyStore().GetKey(TESTKEYID)
+			if err != nil {
+				obj.respondWithTemplate("register.html", 500, res, map[string]any{
+					"err": err,
+				})
+				return
+			}
+
+			// create a simple-oidc session
+			ses := session.NewSession(user.Id)
+			err = obj.daoSource.GetSessionStore().Save(ses)
+			if err != nil {
+				obj.respondWithTemplate("register.html", 500, res, map[string]any{
+					"err": err,
+				})
+				return
+			}
+
+			authJwt := ses.MakeAuthTokenJwt(user, obj.urlPrefix, obj.urlPrefix)
+			refreshJwt := ses.MakeRefreshTokenJwt(*authJwt)
+			// TRACE
+			jwt, err := jwtutil.ClaimsToJwt(authJwt, key.Kid, key.Rsa)
+			rt, err := jwtutil.ClaimsToJwt(refreshJwt, key.Kid, key.Rsa)
+
+			loginCookie := &http.Cookie{
+				Name:  LoginJwtCookieName,
+				Value: jwt,
+				// Path:     "/",
+				MaxAge:   9 * 60 * 60, // 9 hours
+				HttpOnly: true,
+				SameSite: http.SameSiteDefaultMode,
+			}
+			refreshCookie := &http.Cookie{
+				Name:  LoginRefreshTokenCookieName,
+				Value: rt,
+				// Path:     "/",
+				MaxAge:   7 * 24 * 60 * 60, // 7 days
+				HttpOnly: true,
+				SameSite: http.SameSiteDefaultMode,
+			}
+
+			http.SetCookie(res, loginCookie)
+			http.SetCookie(res, refreshCookie)
+
+			// redirect back to the accept page, now that they are logged in
+			res.Header().Add("Location", "/accept")
+			res.WriteHeader(302)
+			return
 		}
 
 		res.WriteHeader(500)
+		return
 	}
 }
+
 func (obj *acceptOidcHandler) loginHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
+		claims := obj.userClaims(req)
+		if claims != nil {
+			res.Header().Add("Location", "/account")
+			res.WriteHeader(302)
+			return
+		}
+
 		// todo: load customisation by client id
 		clientId := req.URL.Query().Get("client_id")
 		client, err := obj.daoSource.GetClientStore().Get(clientId)
@@ -290,16 +389,8 @@ func (obj *acceptOidcHandler) loginHandler() http.HandlerFunc {
 		}
 
 		if req.Method == http.MethodGet {
-			file, err := webcontent.Fs.Open("login.html")
-			if err == nil {
-				fileContent, err := io.ReadAll(file)
-				if err == nil {
-					res.Header().Add("Content-Type", "text/html")
-					res.WriteHeader(200)
-					res.Write(fileContent)
-					return
-				}
-			}
+			obj.respondWithTemplate("login.html", 200, res, nil)
+			return
 		}
 		if req.Method == http.MethodPost {
 			// handle LOGIN (or REGISTRATION)

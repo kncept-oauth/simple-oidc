@@ -19,7 +19,7 @@ type UserStore interface {
 
 type OidcUser struct {
 	Id              string
-	EncodedSalt     string
+	Salt            string
 	EncodedPassword string
 }
 
@@ -68,15 +68,10 @@ func GetEncodingType(salt string) EncodingType {
 	return ToEncodingType(salt[0:idx])
 }
 
-func EncodePassword(salt, password string, encodingVersions ...EncodingType) (string, error) {
+func EncodePassword(salt, password string) (string, error) {
 	password = fmt.Sprintf("%v%v", salt, password)
-	if len(encodingVersions) > 1 {
-		return "", fmt.Errorf("must supply at most one encoding version")
-	}
-	if len(encodingVersions) == 0 {
-		encodingVersions = []EncodingType{EtBcrypt} // default to latest
-	}
-	switch encodingVersions[0] {
+	encodingType := GetEncodingType(salt)
+	switch encodingType {
 	case EtNone:
 		return password, nil
 	case EtMd5:
@@ -87,18 +82,13 @@ func EncodePassword(salt, password string, encodingVersions ...EncodingType) (st
 		data, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		return base64.StdEncoding.EncodeToString(data), err
 	default:
-		return "", fmt.Errorf("unsupported Encoding version %v", encodingVersions[0])
+		return "", fmt.Errorf("unsupported Encoding version %v", encodingType)
 	}
 }
 
-func ComparePassword(salt, password string, hash string, encodingVersions ...EncodingType) bool {
-	if len(encodingVersions) > 1 {
-		return false
-	}
-	if len(encodingVersions) == 0 {
-		encodingVersions = []EncodingType{EtBcrypt} // default to latest
-	}
-	switch encodingVersions[0] {
+func ComparePassword(salt, password string, hash string) bool {
+	encodingType := GetEncodingType(salt)
+	switch encodingType {
 	case EtBcrypt:
 		password = fmt.Sprintf("%v%v", salt, password)
 		encoded, err := base64.StdEncoding.DecodeString(hash)
@@ -108,7 +98,7 @@ func ComparePassword(salt, password string, hash string, encodingVersions ...Enc
 		err = bcrypt.CompareHashAndPassword(encoded, []byte(password))
 		return err == nil
 	default:
-		expected, err := EncodePassword(salt, password, encodingVersions[0])
+		expected, err := EncodePassword(salt, password)
 		return err == nil && expected == hash
 	}
 }

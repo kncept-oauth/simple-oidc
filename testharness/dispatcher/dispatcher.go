@@ -31,7 +31,8 @@ func NewApplication(daoSource servicedispatcher.DaoSource) *fiber.App {
 
 	app := fiber.New(
 		fiber.Config{
-			Views: viewEngine,
+			Views:          viewEngine,
+			ReadBufferSize: 4096 * 4,
 		},
 	)
 

@@ -36,6 +36,7 @@ func main() {
 	// run a test harness
 	app := dispatcher.NewApplication(datastore)
 	testHarnessPort := "3000"
+
 	go func() {
 		fmt.Printf("Starting Testharness on http://127.0.0.1:%s/\n", testHarnessPort)
 		if err := app.Listen(":" + testHarnessPort); err != nil {

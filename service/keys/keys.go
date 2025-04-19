@@ -1,6 +1,8 @@
 package keys
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -15,14 +17,20 @@ import (
 )
 
 type Keystore interface {
+	ListKeys() ([]string, error)
 	GetKey(kid string) (*JwkKeypair, error)
 	SaveKey(keypair *JwkKeypair) error
 }
 
 type JwkKeypair struct {
-	Pvt    *rsa.PrivateKey
-	Kid    string
-	Expiry *time.Time
+	Kid string // Key ID
+	Kty string // eg: RSA
+
+	Rsa *rsa.PrivateKey
+	Pem string //  STORE as a PEM, a struct
+
+	Exp *time.Time // expiry
+	Nbf *time.Time // not before time
 }
 
 func NewKeyId(prefix string) string {
@@ -36,16 +44,96 @@ func KeyIdPrefix(keyId string) string {
 	return keyId[:idx]
 }
 
+func GenerateJwkKeypair() (*JwkKeypair, error) {
+	rsaKey, err := GenerateRsaKey()
+	if err != nil {
+		return nil, err
+	}
+	return &JwkKeypair{
+		Kid: uuid.NewString(),
+		Kty: "RSA",
+		Rsa: rsaKey,
+		Pem: "",
+	}, nil
+}
+
+// used for PUBLIC keys only.
 type JwkDetails struct {
-	Kty string `json:"kty"` // "RSA"
+	Kty string `json:"kty"` // "RSA" "EC"
 	Kid string `json:"kid"` // Key ID
 	Use string `json:"use"` // sig
 	Alg string `json:"alg"` // RS512
-	N   string `json:"n"`   // n value
-	E   string `json:"e"`   // e (exponent) value
+
+	// valid for RSA Keys only
+	N string `json:"n,omitempty"` // n value
+	E string `json:"e,omitempty"` // e (exponent) value
+
+	// valid for EC keys only
+	Crv string `json:"crv,omitempty"` // curve name
+	X   string `json:"x,omitempty"`
+	Y   string `json:"y,omitempty"`
 }
 
-func (obj JwkDetails) ToPublicKey() (*rsa.PublicKey, error) {
+// example cache from https://github.com/Spomky-Labs/jose/blob/master/doc/object/jwk.md
+
+// RSA public key
+// $jwk = new JWK([
+//     'kty' => 'RSA',
+//     'n'   => 'sXchDaQebHnPiGvyDOAT4saGEUetSyo9MKLOoWFsueri23bOdgWp4Dy1WlUzewbgBHod5pcM9H95GQRV3JDXboIRROSBigeC5yjU1hGzHHyXss8UDprecbAYxknTcQkhslANGRUZmdTOQ5qTRsLAt6BTYuyvVRdhS8exSZEy_c4gs_7svlJJQ4H9_NxsiIoLwAEk7-Q3UXERGYw_75IDrGA84-lA_-Ct4eTlXHBIY2EaV7t7LjJaynVJCpkv4LKjTTAumiGUIuQhrNhZLuF_RJLqHpM2kgWFLU7-VTdL1VbC2tejvcI2BlMkEpk1BzBZI0KQB0GaDWFLN-aEAw3vRw',
+//     'e'   => 'AQAB',
+// ]);
+// RSA private key
+// $jwk = new JWK([
+//     'kty' => 'RSA',
+//     'n'   => 'sXchDaQebHnPiGvyDOAT4saGEUetSyo9MKLOoWFsueri23bOdgWp4Dy1WlUzewbgBHod5pcM9H95GQRV3JDXboIRROSBigeC5yjU1hGzHHyXss8UDprecbAYxknTcQkhslANGRUZmdTOQ5qTRsLAt6BTYuyvVRdhS8exSZEy_c4gs_7svlJJQ4H9_NxsiIoLwAEk7-Q3UXERGYw_75IDrGA84-lA_-Ct4eTlXHBIY2EaV7t7LjJaynVJCpkv4LKjTTAumiGUIuQhrNhZLuF_RJLqHpM2kgWFLU7-VTdL1VbC2tejvcI2BlMkEpk1BzBZI0KQB0GaDWFLN-aEAw3vRw',
+//     'e'   => 'AQAB',
+//     'd'   => 'VFCWOqXr8nvZNyaaJLXdnNPXZKRaWCjkU5Q2egQQpTBMwhprMzWzpR8Sxq1OPThh_J6MUD8Z35wky9b8eEO0pwNS8xlh1lOFRRBoNqDIKVOku0aZb-rynq8cxjDTLZQ6Fz7jSjR1Klop-YKaUHc9GsEofQqYruPhzSA-QgajZGPbE_0ZaVDJHfyd7UUBUKunFMScbflYAAOYJqVIVwaYR5zWEEceUjNnTNo_CVSj-VvXLO5VZfCUAVLgW4dpf1SrtZjSt34YLsRarSb127reG_DUwg9Ch-KyvjT1SkHgUWRVGcyly7uvVGRSDwsXypdrNinPA4jlhoNdizK2zF2CWQ',
+//     'p'   => '9gY2w6I6S6L0juEKsbeDAwpd9WMfgqFoeA9vEyEUuk4kLwBKcoe1x4HG68ik918hdDSE9vDQSccA3xXHOAFOPJ8R9EeIAbTi1VwBYnbTp87X-xcPWlEPkrdoUKW60tgs1aNd_Nnc9LEVVPMS390zbFxt8TN_biaBgelNgbC95sM',
+//     'q'   => 'uKlCKvKv_ZJMVcdIs5vVSU_6cPtYI1ljWytExV_skstvRSNi9r66jdd9-yBhVfuG4shsp2j7rGnIio901RBeHo6TPKWVVykPu1iYhQXw1jIABfw-MVsN-3bQ76WLdt2SDxsHs7q7zPyUyHXmps7ycZ5c72wGkUwNOjYelmkiNS0',
+//     'dp'  => 'w0kZbV63cVRvVX6yk3C8cMxo2qCM4Y8nsq1lmMSYhG4EcL6FWbX5h9yuvngs4iLEFk6eALoUS4vIWEwcL4txw9LsWH_zKI-hwoReoP77cOdSL4AVcraHawlkpyd2TWjE5evgbhWtOxnZee3cXJBkAi64Ik6jZxbvk-RR3pEhnCs',
+//     'dq'  => 'o_8V14SezckO6CNLKs_btPdFiO9_kC1DsuUTd2LAfIIVeMZ7jn1Gus_Ff7B7IVx3p5KuBGOVF8L-qifLb6nQnLysgHDh132NDioZkhH7mI7hPG-PYE_odApKdnqECHWw0J-F0JWnUd6D2B_1TvF9mXA2Qx-iGYn8OVV1Bsmp6qU',
+//     'qi'  => 'eNho5yRBEBxhGBtQRww9QirZsB66TrfFReG_CcteI1aCneT0ELGhYlRlCtUkTRclIfuEPmNsNDPbLoLqqCVznFbvdB7x-Tl-m0l_eFTj2KiqwGqE9PZB9nNTwMVvH3VRRSLWACvPnSiwP8N5Usy-WRXS-V7TbpxIhvepTfE0NNo',
+// ]);
+
+// EC public key
+// $jwk = new JWK([
+//     'kty' => 'EC',
+//     'crv' => 'P-521',
+//     'x'   => 'AekpBQ8ST8a8VcfVOTNl353vSrDCLLJXmPk06wTjxrrjcBpXp5EOnYG_NjFZ6OvLFV1jSfS9tsz4qUxcWceqwQGk',
+//     'y'   => 'ADSmRA43Z1DSNx_RvcLI87cdL07l6jQyyBXMoxVg_l2Th-x3S1WDhjDly79ajL4Kkd0AZMaZmh9ubmf63e3kyMj2',
+// ]);
+// EC private key
+// $jwk = new JWK([
+//     'kty' => 'EC',
+//     'crv' => 'P-521',
+//     'x'   => 'AekpBQ8ST8a8VcfVOTNl353vSrDCLLJXmPk06wTjxrrjcBpXp5EOnYG_NjFZ6OvLFV1jSfS9tsz4qUxcWceqwQGk',
+//     'y'   => 'ADSmRA43Z1DSNx_RvcLI87cdL07l6jQyyBXMoxVg_l2Th-x3S1WDhjDly79ajL4Kkd0AZMaZmh9ubmf63e3kyMj2',
+//     'd'   => 'AY5pb7A0UFiB3RELSD64fTLOSV_jazdF7fLYyuTw8lOfRhWg6Y6rUrPAxerEzgdRhajnu0ferB0d53vM9mE15j2C',
+// ]);
+
+// OKP type --> EdDSA
+// A private OKP key
+// $public = new JWK([
+// 	'kty' => 'OKP',
+// 	'crv' => 'Ed25519',
+// 	'x'   => '11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo',
+//  ]);
+// A private OKP key
+//  $private = new JWK([
+// 	'kty' => 'OKP',
+// 	'crv' => 'Ed25519',
+// 	'x'   => '11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo',
+// 	'd'   => 'nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A',
+//  ]);
+
+func (obj JwkDetails) ToPublicKey() (any, error) {
+	if obj.Kty == "RSA" {
+		return obj.ToRsaPublicKey()
+	}
+	return nil, fmt.Errorf("Unable to decode key type: %v", obj.Kty)
+}
+
+func (obj JwkDetails) ToRsaPublicKey() (*rsa.PublicKey, error) {
 	if obj.Kty != "RSA" {
 		return nil, fmt.Errorf("only rsa key type supported")
 	}
@@ -71,6 +159,10 @@ func GenerateRsaKey() (*rsa.PrivateKey, error) {
 	keySize := 4096
 	return rsa.GenerateKey(rand.Reader, keySize)
 }
+func GenerateEcdsaKey() (*ecdsa.PrivateKey, error) {
+	curve := elliptic.P521()
+	return ecdsa.GenerateKey(curve, rand.Reader)
+}
 
 func PemEncodeRsaPrivate(key *rsa.PrivateKey) string {
 	privatePem := pem.EncodeToMemory(
@@ -89,31 +181,70 @@ func PemEncodeRsaPublic(key *rsa.PublicKey) string {
 	return string(privatePem)
 }
 
-func RsaToJwk(keyId string, rsa *rsa.PublicKey) *JwkDetails {
-	fmt.Printf("rsa.Size() %v\n", rsa.Size())
-	e := base64.RawURLEncoding.EncodeToString(big.NewInt(int64(rsa.E)).Bytes())
-	n := base64.RawURLEncoding.EncodeToString(rsa.N.Bytes())
+func JwkFromRsa(keyId string, key *rsa.PublicKey) *JwkDetails {
+	fmt.Printf("rsa.Size() %v\n", key.Size())
+	e := base64.RawURLEncoding.EncodeToString(big.NewInt(int64(key.E)).Bytes())
+	n := base64.RawURLEncoding.EncodeToString(key.N.Bytes())
 	return &JwkDetails{
 		Kty: "RSA",
 		Kid: keyId,
 		Use: "sig",
+
 		Alg: "RS512",
 		N:   n,
 		E:   e,
 	}
 }
+func JwkFromEcDSA(keyId string, key *ecdsa.PublicKey) *JwkDetails {
+	var crv string
+	switch key.Curve {
+	case elliptic.P256():
+		crv = "P-256"
+	case elliptic.P384():
+		crv = "P-384"
+	case elliptic.P521():
+		crv = "P-521"
+	default:
+		panic(fmt.Errorf("unsupported curve"))
+	}
+	x := base64.RawURLEncoding.EncodeToString(key.X.Bytes())
+	y := base64.RawURLEncoding.EncodeToString(key.Y.Bytes())
 
-func EcToJwt(keyId string, key interface{}) *JwkDetails {
-	exampleJson := `{
-      "kty": "RSA",
-      "e": "xxx",
-      "use": "sig",
-      "kid": "xxx",
-      "x5t": "xx",
-      "x5c": [
-        "xxx"
-      ],
-      "n": "xxx
-}`
-	panic(fmt.Errorf("unimplemented - need something like %v", exampleJson))
+	return &JwkDetails{
+		Kty: "EC",
+		Kid: keyId,
+		Use: "sig",
+
+		Crv: crv,
+		X:   x,
+		Y:   y,
+	}
 }
+
+// func JwkToEcdh(keyId string, key *ecdh.PublicKey) *JwkDetails {
+// 	// Curve25519
+// 	// Curve448
+// 	// Ed25519
+// 	// Ed448
+// 	var crv string
+// 	// switch key.Curve() {
+// 	// case ecdh.Ed25519():
+// 	crv = "Ed25519"
+// 	// case elliptic.Ed448():
+// 	// crv = "Ed448"
+// 	// default:
+// 	// panic(fmt.Errorf("unsupported curve %t %v", key.Curve(), key.Curve()))
+// 	// }
+// 	x := base64.RawURLEncoding.EncodeToString(key.X.Bytes())
+// 	y := base64.RawURLEncoding.EncodeToString(key.Y.Bytes())
+
+// 	return &JwkDetails{
+// 		Kty: "OKP",
+// 		Kid: keyId,
+// 		Use: "sig",
+
+// 		Crv: crv,
+// 		X:   x,
+// 		Y:   y,
+// 	}
+// }
