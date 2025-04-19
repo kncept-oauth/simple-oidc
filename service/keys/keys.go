@@ -22,6 +22,40 @@ type Keystore interface {
 	SaveKey(keypair *JwkKeypair) error
 }
 
+func GetCurrentKey(store Keystore, asof ...time.Time) (*JwkKeypair, error) {
+	if len(asof) > 1 {
+		panic("must only provie one asof arg")
+	}
+	if len(asof) != 1 {
+		asof = []time.Time{
+			time.Now().UTC().Truncate(time.Second),
+		}
+	}
+	keys, err := store.ListKeys()
+	if err != nil {
+		return nil, err
+	}
+	for _, kid := range keys {
+		key, err := store.GetKey(kid)
+		if err != nil {
+			return nil, err
+		}
+		if key.InDate(asof[0]) {
+			return key, nil
+		}
+	}
+
+	key, err := GenerateJwkKeypair(asof[0])
+	if err != nil {
+		return nil, err
+	}
+	err = store.SaveKey(key)
+	if err != nil {
+		return nil, err
+	}
+	return key, nil
+}
+
 type JwkKeypair struct {
 	Kid string // Key ID
 	Kty string // eg: RSA
@@ -31,6 +65,16 @@ type JwkKeypair struct {
 
 	Exp *time.Time // expiry
 	Nbf *time.Time // not before time
+}
+
+func (jwk *JwkKeypair) InDate(when time.Time) bool {
+	if jwk.Nbf != nil && when.Before(*jwk.Nbf) {
+		return false
+	}
+	if jwk.Exp != nil && when.After(*jwk.Exp) {
+		return false
+	}
+	return true
 }
 
 func NewKeyId(prefix string) string {
@@ -44,16 +88,29 @@ func KeyIdPrefix(keyId string) string {
 	return keyId[:idx]
 }
 
-func GenerateJwkKeypair() (*JwkKeypair, error) {
+func GenerateJwkKeypair(asof ...time.Time) (*JwkKeypair, error) {
+	if len(asof) > 1 {
+		panic("must only provie one asof arg")
+	}
+	if len(asof) != 1 {
+		asof = []time.Time{
+			time.Now().UTC().Truncate(time.Second),
+		}
+	}
 	rsaKey, err := GenerateRsaKey()
 	if err != nil {
 		return nil, err
 	}
+	now := asof[0].UTC().Truncate(time.Second)
+	exp := now.Add(30 * 24 * time.Hour)
 	return &JwkKeypair{
 		Kid: uuid.NewString(),
 		Kty: "RSA",
 		Rsa: rsaKey,
 		Pem: "",
+
+		Nbf: &now,
+		Exp: &exp,
 	}, nil
 }
 

@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/google/uuid"
 	"github.com/klauspost/compress/gzhttp"
 
 	"github.com/kncept-oauth/simple-oidc/service/authorizer"
@@ -29,21 +28,8 @@ const CurrentOperationNameCookieName = "so-op"
 const LoginJwtCookieName = "so-jwt"
 const LoginRefreshTokenCookieName = "so-ts"
 
-var TESTKEYID string = uuid.NewString()
-
 func NewApplication(daoSource DaoSource, urlPrefix string) (http.HandlerFunc, error) {
 	fmt.Printf("NewApplication: %v\n", urlPrefix)
-
-	keyPair, err := keys.GenerateJwkKeypair()
-	if err != nil {
-		return nil, err
-	}
-	keyPair.Kid = TESTKEYID
-	err = daoSource.GetKeyStore().SaveKey(keyPair)
-	if err != nil {
-		return nil, err
-	}
-
 	serveMux := http.NewServeMux()
 
 	acceptOidcHandler := acceptOidcHandler{
@@ -314,8 +300,7 @@ func (obj *acceptOidcHandler) registerHandler() http.HandlerFunc {
 				return
 			}
 
-			// key, err = keys.GetLatestKey(obj.daoSource.GetKeyStore())
-			key, err := obj.daoSource.GetKeyStore().GetKey(TESTKEYID)
+			key, err := keys.GetCurrentKey(obj.daoSource.GetKeyStore())
 			if err != nil {
 				obj.respondWithTemplate("register.html", 500, res, map[string]any{
 					"err": err,
@@ -337,7 +322,19 @@ func (obj *acceptOidcHandler) registerHandler() http.HandlerFunc {
 			refreshJwt := ses.MakeRefreshTokenJwt(*authJwt)
 			// TRACE
 			jwt, err := jwtutil.ClaimsToJwt(authJwt, key.Kid, key.Rsa)
+			if err != nil {
+				obj.respondWithTemplate("register.html", 500, res, map[string]any{
+					"err": err,
+				})
+				return
+			}
 			rt, err := jwtutil.ClaimsToJwt(refreshJwt, key.Kid, key.Rsa)
+			if err != nil {
+				obj.respondWithTemplate("register.html", 500, res, map[string]any{
+					"err": err,
+				})
+				return
+			}
 
 			loginCookie := &http.Cookie{
 				Name:  LoginJwtCookieName,

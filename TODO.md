@@ -1,16 +1,14 @@
 accept_unauthenticated.html
---> Register function
-  create session
-  do login cookie stuff
-
 then Login function
-
-then add expiry times and NBF times into login/register
 
 
 accept_authenticated.html
 --> Logout function
+--> Accept and continue 
 
+/me endpoint
+
+Registration page fixup (password verification, user id taken feedback, etc)
 
 N.B. The application is meant to be pluggable.
 
