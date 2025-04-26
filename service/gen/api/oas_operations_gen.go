@@ -9,6 +9,5 @@ const (
 	AuthorizeGetOperation        OperationName = "AuthorizeGet"
 	IndexOperation               OperationName = "Index"
 	JwksOperation                OperationName = "Jwks"
-	MeOperation                  OperationName = "Me"
 	OpenIdConfigurationOperation OperationName = "OpenIdConfiguration"
 )

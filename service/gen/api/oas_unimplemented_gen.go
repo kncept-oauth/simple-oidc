@@ -40,15 +40,6 @@ func (UnimplementedHandler) Jwks(ctx context.Context) (r *JWKSetResponse, _ erro
 	return r, ht.ErrNotImplemented
 }
 
-// Me implements Me operation.
-//
-// View your own details.
-//
-// GET /me
-func (UnimplementedHandler) Me(ctx context.Context) (r MeOK, _ error) {
-	return r, ht.ErrNotImplemented
-}
-
 // OpenIdConfiguration implements openIdConfiguration operation.
 //
 // (Partial) OIDC config.

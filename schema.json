@@ -189,36 +189,6 @@
                     }
                 }
             }
-        },
-        "/me": {
-            "x-ogen-operation-group": "SelfService",
-            "get": {
-                "operationId": "Me",
-                "description": "View your own details",
-                "parameters": [],
-                "security": [
-                    {"LoginCookie": []},
-                    {"BearerAuth": []}
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Display details",
-                        "content": {
-                            "text/html": {}
-                        }
-                    },
-                    "default": {
-                        "description": "error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
         }
     },
     "components": {

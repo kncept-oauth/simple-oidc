@@ -10,7 +10,6 @@ import (
 type Handler interface {
 	AuthorizationHandler
 	IndexHandler
-	SelfServiceHandler
 	WellKnownHandler
 	// NewError creates *ErrRespStatusCode from error returned by handler.
 	//
@@ -40,18 +39,6 @@ type IndexHandler interface {
 	//
 	// GET /
 	Index(ctx context.Context) (IndexOK, error)
-}
-
-// SelfServiceHandler handles operations described by OpenAPI v3 specification.
-//
-// x-ogen-operation-group: SelfService
-type SelfServiceHandler interface {
-	// Me implements Me operation.
-	//
-	// View your own details.
-	//
-	// GET /me
-	Me(ctx context.Context) (MeOK, error)
 }
 
 // WellKnownHandler handles operations described by OpenAPI v3 specification.

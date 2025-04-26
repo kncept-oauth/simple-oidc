@@ -14,8 +14,6 @@ import (
 
 // SecurityHandler is handler for security parameters.
 type SecurityHandler interface {
-	// HandleBearerAuth handles BearerAuth security.
-	HandleBearerAuth(ctx context.Context, operationName OperationName, t BearerAuth) (context.Context, error)
 	// HandleLoginCookie handles LoginCookie security.
 	HandleLoginCookie(ctx context.Context, operationName OperationName, t LoginCookie) (context.Context, error)
 }
@@ -35,21 +33,6 @@ func findAuthorization(h http.Header, prefix string) (string, bool) {
 	return "", false
 }
 
-func (s *Server) securityBearerAuth(ctx context.Context, operationName OperationName, req *http.Request) (context.Context, bool, error) {
-	var t BearerAuth
-	token, ok := findAuthorization(req.Header, "Bearer")
-	if !ok {
-		return ctx, false, nil
-	}
-	t.Token = token
-	rctx, err := s.sec.HandleBearerAuth(ctx, operationName, t)
-	if errors.Is(err, ogenerrors.ErrSkipServerSecurity) {
-		return nil, false, nil
-	} else if err != nil {
-		return nil, false, err
-	}
-	return rctx, true, err
-}
 func (s *Server) securityLoginCookie(ctx context.Context, operationName OperationName, req *http.Request) (context.Context, bool, error) {
 	var t LoginCookie
 	const parameterName = "SOIDC_AUTH"
@@ -74,20 +57,10 @@ func (s *Server) securityLoginCookie(ctx context.Context, operationName Operatio
 
 // SecuritySource is provider of security values (tokens, passwords, etc.).
 type SecuritySource interface {
-	// BearerAuth provides BearerAuth security value.
-	BearerAuth(ctx context.Context, operationName OperationName) (BearerAuth, error)
 	// LoginCookie provides LoginCookie security value.
 	LoginCookie(ctx context.Context, operationName OperationName) (LoginCookie, error)
 }
 
-func (s *Client) securityBearerAuth(ctx context.Context, operationName OperationName, req *http.Request) error {
-	t, err := s.sec.BearerAuth(ctx, operationName)
-	if err != nil {
-		return errors.Wrap(err, "security source \"BearerAuth\"")
-	}
-	req.Header.Set("Authorization", "Bearer "+t.Token)
-	return nil
-}
 func (s *Client) securityLoginCookie(ctx context.Context, operationName OperationName, req *http.Request) error {
 	t, err := s.sec.LoginCookie(ctx, operationName)
 	if err != nil {

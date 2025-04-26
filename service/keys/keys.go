@@ -279,7 +279,7 @@ func JwkFromEcDSA(keyId string, key *ecdsa.PublicKey) *JwkDetails {
 		Kty: "EC",
 		Kid: keyId,
 		Use: "sig",
-		Alg: "EC",
+		Alg: "EC", // is this correct?
 
 		Crv: crv,
 		X:   x,

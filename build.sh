@@ -1,12 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
-cat << EOF
-Currently moving from make to bash
-EOF
-
 clean() {
     echo do clean
+}
+
+prepare() {
+  cd service 
+  go generate gen/gen.go
+  cd ..
 }
 
 build() {
@@ -25,17 +27,21 @@ testharness() {
     cd testharness && go run main.go
 }
 
+if [[ $# -eq 0 ]] ; then
+  echo targets: clean prepare build testharness
+  exit 1
+fi
 
 while [[ $# > 0 ]] ; do
   case "$1" in
     clean)
-      clean
+      (clean)
       ;;
     prepare)
-      prepare
+      (prepare)
       ;;
     build)
-      build
+      (build)
       ;;
     testharness)
       (testharness)
