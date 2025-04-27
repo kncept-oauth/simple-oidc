@@ -3,10 +3,11 @@ package dispatcher
 import (
 	"errors"
 	"fmt"
+	"html/template"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
-	"text/template"
 
 	"github.com/kncept-oauth/simple-oidc/service/jwtutil"
 	"github.com/kncept-oauth/simple-oidc/service/keys"
@@ -19,8 +20,8 @@ import (
 type acceptOidcHandler struct {
 	daoSource DaoSource
 	urlPrefix string
-
-	templates sync.Map // map[string]*template.Template
+	mu        sync.Mutex
+	tmpl      *template.Template
 }
 
 func (obj *acceptOidcHandler) myAccountHandler() http.HandlerFunc {
@@ -42,7 +43,7 @@ func (obj *acceptOidcHandler) snippetHandler() http.HandlerFunc {
 			res.WriteHeader(404)
 			return
 		}
-		obj.respondWithTemplate(fmt.Sprintf("/snippet/%v", snippet), 200, res, params.QueryParamsToMap(req.URL))
+		obj.respondWithTemplate(fmt.Sprintf("%v.snippet", snippet), 200, res, params.QueryParamsToMap(req.URL))
 	}
 }
 
@@ -122,16 +123,25 @@ func (obj *acceptOidcHandler) acceptLogin() http.HandlerFunc {
 			return
 		}
 
+		type accept_page_params struct {
+			Params params.OidcAuthCodeFlowParams
+		}
+
+		acceptPageParams := accept_page_params{
+			Params: *soCurrent,
+		}
+
 		userId := obj.userId(req)
 		if userId != "" {
 			if req.Method == http.MethodGet {
-				obj.respondWithTemplate("accept_authenticated.html", 200, res, params.QueryParamsToMap(req.URL))
+
+				obj.respondWithTemplate("accept_authenticated.html", 200, res, acceptPageParams)
 				return
 			}
 			// handle POST action (logout of account, )
 		} else {
 			if req.Method == http.MethodGet {
-				obj.respondWithTemplate("accept_unauthenticated.html", 200, res, params.QueryParamsToMap(req.URL))
+				obj.respondWithTemplate("accept_unauthenticated.html", 200, res, acceptPageParams)
 				return
 			}
 		}
@@ -140,46 +150,50 @@ func (obj *acceptOidcHandler) acceptLogin() http.HandlerFunc {
 	}
 }
 
-// func printDir(fs embed.FS, prefix string, dirs []fs.DirEntry, err error) {
-// 	if err != nil {
-// 		fmt.Printf("err: %v\n", err)
-// 		return
-// 	}
-// 	for _, dir := range dirs {
-// 		name := fmt.Sprintf("%v/%v", prefix, dir.Name())
-// 		if prefix == "" {
-// 			name = dir.Name()
-// 		}
-// 		if dir.IsDir() {
-// 			fmt.Printf("%v/\n", name)
-// 			dirs, err = fs.ReadDir(name)
-// 			printDir(fs, name, dirs, err)
-// 		} else {
-// 			fmt.Printf("%v\n", name)
-// 		}
-// 	}
-// }
-
-func (obj *acceptOidcHandler) template(filename string) *template.Template {
-	t, ok := obj.templates.Load("_")
-	if ok {
-		return t.(*template.Template)
+func (obj *acceptOidcHandler) templates() *template.Template {
+	obj.mu.Lock()
+	defer obj.mu.Unlock()
+	if obj.tmpl != nil {
+		return obj.tmpl
 	}
 
-	// dirs, err := webcontent.Fs.ReadDir(".")
-	// printDir(webcontent.Fs, "", dirs, err)
-	// fmt.Printf("__\n\n")
+	templ := template.New("_")
 
-	templ, err := template.New(filename).ParseFS(webcontent.Fs, "*.html", "snippet/*.html", "*.snippet")
+	f := map[string]any{
+		"Wrap": func(keyPairs ...any) any {
+			keyPairsLen := len(keyPairs)
+			if keyPairsLen%2 != 0 {
+				panic("Must supply a full set of key pairs")
+			}
+			m := map[any]any{}
+			i := 0
+			for i < keyPairsLen {
+				m[keyPairs[i]] = keyPairs[i+1]
+				i = i + 2
+			}
+			return m
+		},
+		"Coalesce": func(str ...string) string {
+			for _, s := range str {
+				if s != "" {
+					return s
+				}
+			}
+			return ""
+		},
+	}
+	templ = templ.Funcs(f)
+	templ, err := templ.ParseFS(webcontent.Fs, "*.html", "snippet/*.snippet")
 	if err != nil {
 		panic(err)
 	}
-	obj.templates.Store("_", templ)
+
+	obj.tmpl = templ
 	return templ
 }
 
 func (obj *acceptOidcHandler) respondWithTemplate(filename string, statusCode int, res http.ResponseWriter, data any) {
-	t := obj.template(filename)
+	t := obj.templates()
 	res.Header().Add("Content-Type", "text/html")
 	// TODO: configurable option - execute template before writing to stream
 	res.WriteHeader(statusCode)
@@ -190,18 +204,24 @@ func (obj *acceptOidcHandler) respondWithTemplate(filename string, statusCode in
 	}
 }
 
-// func (obj *acceptOidcHandler) respondWithStaticFile(filename string, statusCode int, res http.ResponseWriter) {
-// 	file, err := webcontent.Fs.Open(filename)
-// 	if err == nil {
-// 		fileContent, err := io.ReadAll(file)
-// 		if err == nil {
-// 			res.Header().Add("Content-Type", "text/html")
-// 			res.WriteHeader(statusCode)
-// 			res.Write(fileContent)
-// 			return
-// 		}
-// 	}
-// }
+func (obj *acceptOidcHandler) respondWithStaticFile(filename string, contentType string, statusCode int) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		file, err := webcontent.Fs.Open(filename)
+		if err == nil {
+			fileContent, err := io.ReadAll(file)
+			if err == nil {
+				if contentType != "" {
+					res.Header().Add("Content-Type", contentType)
+				}
+				res.WriteHeader(statusCode)
+				res.Write(fileContent)
+				return
+			}
+		}
+		res.WriteHeader(500)
+	}
+
+}
 
 func (obj *acceptOidcHandler) createUserSession(res http.ResponseWriter, user *users.OidcUser) {
 	key, err := keys.GetCurrentKey(obj.daoSource.GetKeyStore())
@@ -313,7 +333,6 @@ func (obj *acceptOidcHandler) registerHandler() http.HandlerFunc {
 		}
 
 		res.WriteHeader(500)
-		return
 	}
 }
 
@@ -327,13 +346,17 @@ func (obj *acceptOidcHandler) loginHandler() http.HandlerFunc {
 		}
 
 		// todo: load customisation by client id
-		clientId := req.URL.Query().Get("client_id")
-		client, err := obj.daoSource.GetClientStore().GetClient(clientId)
-		if err == nil {
-			fmt.Printf("client %v\n", client)
-		} else {
-			fmt.Printf("error fetching client %v\n", err)
-		}
+		// clientId := req.URL.Query().Get("client_id")
+		// client, err := obj.daoSource.GetClientStore().GetClient(clientId)
+		// if err == nil {
+		// 	fmt.Printf("client %v\n", client)
+		// } else {
+		// 	fmt.Printf("error fetching client %v\n", err)
+		// }
+		// if client == nil || err != nil {
+		// 	res.WriteHeader(500)
+		// 	return
+		// }
 
 		if req.Method == http.MethodGet {
 			obj.respondWithTemplate("login.html", 200, res, nil)
@@ -341,17 +364,16 @@ func (obj *acceptOidcHandler) loginHandler() http.HandlerFunc {
 		}
 		if req.Method == http.MethodPost {
 			req.ParseForm()
-
 			userService := &users.UserService{
 				UserStore: obj.daoSource.GetUserStore(),
 			}
 
 			username := req.Form.Get("username")
 			password := req.Form.Get("password")
-
 			user, err := userService.AttemptUserLogin(username, password)
 			if err != nil || user == nil {
 				res.WriteHeader(500)
+				return
 			} else {
 				obj.createUserSession(res, user)
 				return
@@ -359,5 +381,20 @@ func (obj *acceptOidcHandler) loginHandler() http.HandlerFunc {
 		}
 
 		res.WriteHeader(500)
+	}
+}
+
+func (obj *acceptOidcHandler) logoutHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// expire login cookie
+		loginCookie := &http.Cookie{
+			Name:     LoginJwtCookieName,
+			Value:    "",
+			MaxAge:   0, // expire cookie
+			HttpOnly: true,
+			SameSite: http.SameSiteDefaultMode,
+		}
+		http.SetCookie(w, loginCookie)
+		http.Redirect(w, r, "/", http.StatusFound)
 	}
 }

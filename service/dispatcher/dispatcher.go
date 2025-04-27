@@ -30,9 +30,11 @@ func NewApplication(daoSource DaoSource, urlPrefix string) (http.HandlerFunc, er
 	serveMux.Handle("/snippet/", acceptOidcHandler.snippetHandler())
 	serveMux.Handle("/accept", acceptOidcHandler.acceptLogin())
 	serveMux.Handle("/login", acceptOidcHandler.loginHandler())
+	serveMux.Handle("/logout", acceptOidcHandler.logoutHandler())
 	serveMux.Handle("/register", acceptOidcHandler.registerHandler())
 	serveMux.Handle("/me", acceptOidcHandler.myAccountHandler()) // TODO: Redirect to /account (or /login)
 	serveMux.Handle("/account", acceptOidcHandler.myAccountHandler())
+	serveMux.Handle("/style.css", acceptOidcHandler.respondWithStaticFile("style.css", "text/css", 200))
 
 	server, err := api.NewServer(
 		&oapiDispatcher{

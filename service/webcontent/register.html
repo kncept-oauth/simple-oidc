@@ -1,14 +1,12 @@
 <html>
-    <head>
-        <title>Simple OIDC</title>
-    </head>
+    {{ template "header.snippet" (Wrap "Title" "Simple OIDC Registration") }}
     <body>
         <h1>Simple OIDC</h1>
         <p>Register</p>
         <form action="/register" method="post">
             <div>Username: <input type="text" name="username"></div>
             <div>Password: <input type="password" name="password"></div>
-            <div>Verify Password: <input type="password" name="password2"></div>
+            <!-- <div>Verify Password: <input type="password" name="password2"></div> -->
             <div><input type="submit" value="Register"></div>
         </form>
     </body>

@@ -1,13 +1,18 @@
 <html>
-    <head>
-        <title>Simple OIDC</title>
-    </head>
+    {{ template "header.snippet" (Wrap "Title" "Simple OIDC") }}
     <body>
         <h1>Simple OIDC</h1>
         
-        
+        Client id is: {{.Params.ClientId}}
+
+        <br>
+
         (authenticated accept screen)
-        {{ template "accept_summary.snippet" . }}
+        {{ template "accept_summary.snippet" .Params }}
+
+        <br>
+        <br>
+        Also, a list of apps that a user is authorized with.
 
         <p>Confirm Login</p>
     </body>

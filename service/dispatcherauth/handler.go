@@ -13,13 +13,13 @@ type LoginCookieContextKey struct{}
 type Handler struct {
 }
 
-func (obj *Handler) HandleBearerAuth(ctx context.Context, operationName api.OperationName, t api.BearerAuth) (context.Context, error) {
-	fmt.Printf("HandleBearerAuth %v\n", t.Token)
-	if t.Token != "" {
-		return context.WithValue(ctx, BearerAuthContextKey{}, t.Token), nil
-	}
-	return ctx, nil
-}
+//	func (obj *Handler) HandleBearerAuth(ctx context.Context, operationName api.OperationName, t api.BearerAuth) (context.Context, error) {
+//		fmt.Printf("HandleBearerAuth %v\n", t.Token)
+//		if t.Token != "" {
+//			return context.WithValue(ctx, BearerAuthContextKey{}, t.Token), nil
+//		}
+//		return ctx, nil
+//	}
 func (obj *Handler) HandleLoginCookie(ctx context.Context, operationName api.OperationName, t api.LoginCookie) (context.Context, error) {
 	fmt.Printf("HandleLoginCookie %v\n", t.APIKey)
 	if t.APIKey != "" {

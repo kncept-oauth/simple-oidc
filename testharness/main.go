@@ -33,7 +33,6 @@ func main() {
 	}
 
 	time.Sleep(1 * time.Second)
-	// run a test harness
 	app := dispatcher.NewApplication(datastore)
 	testHarnessPort := "3000"
 

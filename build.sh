@@ -15,7 +15,7 @@ build() {
     echo do build
 
     cd service 
-    go generate gen/gen.go
+    go generate gen/gen.go  
     cd ..
 }
 
