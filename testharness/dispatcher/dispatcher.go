@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/kncept-oauth/simple-oidc/service/authorizer"
+	"github.com/kncept-oauth/simple-oidc/service/client"
 	servicedispatcher "github.com/kncept-oauth/simple-oidc/service/dispatcher"
 	"github.com/kncept-oauth/simple-oidc/testharness/webcontent"
 
@@ -24,7 +24,7 @@ func NewApplication(daoSource servicedispatcher.DaoSource) *fiber.App {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	viewEngine := html.NewFileSystem(http.FS(webcontent.Views), ".html")
-	viewEngine.AddFunc("Clients", func() []authorizer.Client {
+	viewEngine.AddFunc("Clients", func() []client.Client {
 		clients, _ := daoSource.GetClientStore().ListClients()
 		return clients
 	})
@@ -37,7 +37,7 @@ func NewApplication(daoSource servicedispatcher.DaoSource) *fiber.App {
 	)
 
 	// most basic client
-	client := authorizer.ClientStruct{
+	client := client.ClientStruct{
 		ClientId: "random-client-id", //uuid.NewString(),
 		AllowedRedirectUris: []string{
 			"http://localhost:3000/oauth2/callback",

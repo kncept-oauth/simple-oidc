@@ -1,4 +1,4 @@
-package authorizer
+package client
 
 type Client interface {
 	GetClientId() string

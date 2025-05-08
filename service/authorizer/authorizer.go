@@ -7,18 +7,19 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/kncept-oauth/simple-oidc/service/client"
 	"github.com/kncept-oauth/simple-oidc/service/dispatcherauth"
 	"github.com/kncept-oauth/simple-oidc/service/gen/api"
 )
 
-func NewAuthorizer(store ClientStore) Authorizer {
+func NewAuthorizer(store client.ClientStore) Authorizer {
 	return Authorizer{
 		store: store,
 	}
 }
 
 type Authorizer struct {
-	store ClientStore
+	store client.ClientStore
 }
 
 func (obj Authorizer) AuthorizeGet(ctx context.Context, params api.AuthorizeGetParams) (api.AuthorizeGetRes, error) {
@@ -71,8 +72,7 @@ func (obj Authorizer) AuthorizeGet(ctx context.Context, params api.AuthorizeGetP
 	// redirect to a login/auth page
 }
 
-func isValidRedirectUri(client Client, redirectUri string) bool {
-
+func isValidRedirectUri(client client.Client, redirectUri string) bool {
 	if client.IsAllowedRedirectUriRegex() {
 		// TOOD: Consider caching?
 		for _, allowedRedirectUri := range client.GetAllowedRedirectUris() {
