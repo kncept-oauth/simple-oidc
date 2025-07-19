@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/kncept-oauth/simple-oidc/service/authorizer"
+	"github.com/kncept-oauth/simple-oidc/service/dao"
 	"github.com/kncept-oauth/simple-oidc/service/gen/api"
 	"github.com/kncept-oauth/simple-oidc/service/webcontent"
 )
@@ -12,7 +13,7 @@ import (
 type oapiDispatcher struct {
 	authorizer authorizer.Authorizer
 	Issuer     string
-	daoSource  DaoSource
+	daoSource  dao.DaoSource
 }
 
 func (obj *oapiDispatcher) AuthorizeGet(ctx context.Context, params api.AuthorizeGetParams) (api.AuthorizeGetRes, error) {

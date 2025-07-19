@@ -1,4 +1,4 @@
-package dispatcher
+package dao
 
 import (
 	"github.com/kncept-oauth/simple-oidc/service/client"

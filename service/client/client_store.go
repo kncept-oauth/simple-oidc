@@ -1,5 +1,7 @@
 package client
 
+import "context"
+
 type Client interface {
 	GetClientId() string
 
@@ -22,9 +24,9 @@ type ClientStruct struct {
 }
 
 type ClientStore interface {
-	GetClient(clientId string) (Client, error)
-	SaveClient(client ClientStruct) error
-	ListClients() ([]Client, error)
+	GetClient(ctx context.Context, clientId string) (Client, error)
+	SaveClient(ctx context.Context, client ClientStruct) error
+	ListClients(ctx context.Context) ([]Client, error)
 }
 
 func (obj ClientStruct) GetClientId() string {

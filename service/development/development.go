@@ -7,11 +7,12 @@ import (
 	"os"
 
 	"github.com/kncept-oauth/simple-oidc/service/crypto"
+	"github.com/kncept-oauth/simple-oidc/service/dao"
 	"github.com/kncept-oauth/simple-oidc/service/dispatcher"
 )
 
 // runs 'ListenAndServeTLS' in a goroutine
-func RunLocally(daoSource dispatcher.DaoSource, urlPrefix string) (*http.Server, error) {
+func RunLocally(daoSource dao.DaoSource, urlPrefix string) (*http.Server, error) {
 
 	handler, err := dispatcher.NewApplication(daoSource, urlPrefix)
 	if err != nil {

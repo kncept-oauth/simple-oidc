@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/kncept-oauth/simple-oidc/service/dao"
 	"github.com/kncept-oauth/simple-oidc/service/jwtutil"
 	"github.com/kncept-oauth/simple-oidc/service/keys"
 	"github.com/kncept-oauth/simple-oidc/service/params"
@@ -18,7 +19,7 @@ import (
 )
 
 type acceptOidcHandler struct {
-	daoSource DaoSource
+	daoSource dao.DaoSource
 	urlPrefix string
 	mu        sync.Mutex
 	tmpl      *template.Template

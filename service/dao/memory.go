@@ -1,11 +1,11 @@
 package dao
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
 	"github.com/kncept-oauth/simple-oidc/service/client"
-	"github.com/kncept-oauth/simple-oidc/service/dispatcher"
 	"github.com/kncept-oauth/simple-oidc/service/keys"
 	"github.com/kncept-oauth/simple-oidc/service/session"
 	"github.com/kncept-oauth/simple-oidc/service/users"
@@ -23,7 +23,7 @@ func (obj *MemoryDao) GetKeyStore() keys.Keystore {
 	return obj
 }
 
-func NewMemoryDao() dispatcher.DaoSource {
+func NewMemoryDao() DaoSource {
 	return &MemoryDao{}
 }
 
@@ -68,7 +68,7 @@ func (obj *MemoryDao) ListKeys() ([]string, error) {
 }
 
 // GetClient implements authorizer.ClientStore.
-func (obj *MemoryDao) GetClient(clientId string) (client.Client, error) {
+func (obj *MemoryDao) GetClient(ctx context.Context, clientId string) (client.Client, error) {
 	c, ok := obj.clients.Load(clientId)
 	if ok {
 		return c.(client.Client), nil
@@ -77,8 +77,8 @@ func (obj *MemoryDao) GetClient(clientId string) (client.Client, error) {
 }
 
 // Save implements authorizer.ClientStore.
-func (obj *MemoryDao) SaveClient(c client.ClientStruct) error {
-	existing, err := obj.GetClient(c.ClientId)
+func (obj *MemoryDao) SaveClient(ctx context.Context, c client.ClientStruct) error {
+	existing, err := obj.GetClient(ctx, c.ClientId)
 	if err != nil {
 		return err
 	}
@@ -89,7 +89,7 @@ func (obj *MemoryDao) SaveClient(c client.ClientStruct) error {
 	return nil
 }
 
-func (obj *MemoryDao) ListClients() ([]client.Client, error) {
+func (obj *MemoryDao) ListClients(ctx context.Context) ([]client.Client, error) {
 	clients := make([]client.Client, 0)
 	obj.clients.Range(func(key, value any) bool {
 		if c, ok := value.(client.Client); ok {

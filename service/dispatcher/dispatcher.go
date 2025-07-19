@@ -8,6 +8,7 @@ import (
 	"github.com/klauspost/compress/gzhttp"
 
 	"github.com/kncept-oauth/simple-oidc/service/authorizer"
+	"github.com/kncept-oauth/simple-oidc/service/dao"
 	"github.com/kncept-oauth/simple-oidc/service/dispatcherauth"
 	"github.com/kncept-oauth/simple-oidc/service/gen/api"
 )
@@ -18,7 +19,7 @@ const CurrentOperationNameCookieName = "so-op"
 const LoginJwtCookieName = "so-jwt"
 const LoginRefreshTokenCookieName = "so-ts"
 
-func NewApplication(daoSource DaoSource, urlPrefix string) (http.HandlerFunc, error) {
+func NewApplication(daoSource dao.DaoSource, urlPrefix string) (http.HandlerFunc, error) {
 	fmt.Printf("NewApplication: %v\n", urlPrefix)
 	serveMux := http.NewServeMux()
 

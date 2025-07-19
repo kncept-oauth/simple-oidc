@@ -189,6 +189,79 @@
                     }
                 }
             }
+        },
+        "/token": {
+            "x-ogen-operation-group": "Authorization",
+            "post": {
+                "description": "Token Exchange Endpoint",
+                "parameters": [  
+                    {
+                        "in": "query",
+                        "name": "grant_type",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description" : "is this required or not?"
+                    },
+                    {
+                        "in": "query",
+                        "name": "client_id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "code",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "redirect_uri",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful code exchange",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LoginTokens"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Client Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -341,43 +414,33 @@
                     }
                 }
             },
-            "AuthChannelType": {
-                "type": "string",
-                "enum": [
-                    "phone",
-                    "email",
-                    "oidc"
-                ]
-            },
-            "AuthChannelLogin": {
-                "type": "object",
-                "required": [
-                    "type",
-                    "value"
-                ],
-                "properties": {
-                    "type": {
-                        "nullable": false,
-                        "$ref": "#/components/schemas/AuthChannelType"
-                    },
-                    "value": {
-                        "nullable": false,
-                        "type": "string"
-                    }
-                }
-            },
             "LoginTokens": {
                 "type": "object",
                 "required": [
-                    "token",
-                    "refreshToken"
+                    "access_token",
+                    "token_type",
+                    "expires_in",
+                    "id_token",
+                    "refresh_token"
                 ],
                 "properties": {
-                    "token": {
+                    "access_token": {
                         "nullable": false,
                         "type": "string"
                     },
-                    "refreshToken": {
+                    "token_type": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "expires_in": {
+                        "nullable": false,
+                        "type": "number"
+                    },
+                    "id_token": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "refresh_token": {
                         "nullable": false,
                         "type": "string"
                     }

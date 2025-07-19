@@ -2,12 +2,12 @@ package dispatcher
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/kncept-oauth/simple-oidc/service/client"
-	servicedispatcher "github.com/kncept-oauth/simple-oidc/service/dispatcher"
+	"github.com/kncept-oauth/simple-oidc/service/dao"
 	"github.com/kncept-oauth/simple-oidc/testharness/webcontent"
 
 	"github.com/gofiber/fiber/v2"
@@ -18,14 +18,16 @@ import (
 	fiberoidc "github.com/kncept/fiber-oidc"
 )
 
-func NewApplication(daoSource servicedispatcher.DaoSource) *fiber.App {
+const staticClientId = "static-client-id"
+
+func NewApplication(daoSource dao.DaoSource) *fiber.App {
 	ctx := context.Background()
 	fmt.Printf("New Testharness Application\n")
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	// http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	viewEngine := html.NewFileSystem(http.FS(webcontent.Views), ".html")
 	viewEngine.AddFunc("Clients", func() []client.Client {
-		clients, _ := daoSource.GetClientStore().ListClients()
+		clients, _ := daoSource.GetClientStore().ListClients(ctx)
 		return clients
 	})
 
@@ -37,20 +39,33 @@ func NewApplication(daoSource servicedispatcher.DaoSource) *fiber.App {
 	)
 
 	// most basic client
-	client := client.ClientStruct{
-		ClientId: "random-client-id", //uuid.NewString(),
+	c := &client.ClientStruct{
+		ClientId: staticClientId,
 		AllowedRedirectUris: []string{
-			"http://localhost:3000/oauth2/callback",
+			"https://localhost:3000/oauth2/callback",
 		},
-		// ClientSecret: uuid.NewString(),
+		// Audiences: []string{
+		// 	"https://localhost:3000/",
+		// },
 	}
-	daoSource.GetClientStore().SaveClient(client)
+	daoSource.GetClientStore().SaveClient(ctx, *c)
+
+	// c = &client.Client{
+	// 	ClientId: uuid.NewString(),
+	// 	AllowedRedirectUris: []string{
+	// 		"https://localhost:3000/oauth2/callback",
+	// 	},
+	// 	Audiences: []string{
+	// 		"https://localhost:3000/",
+	// 	},
+	// }
+	// daoSource.GetClientStore().SaveClient(c)
 
 	fiberOidcConfig := &fiberoidc.Config{
 		Issuer:         "https://localhost:8443",
-		ClientId:       client.ClientId,
-		ClientSecret:   "todo",
-		RedirectUri:    "http://localhost:3000/oauth2/callback",
+		ClientId:       staticClientId,
+		ClientSecret:   fmt.Sprintf("client-secret-%v", uuid.NewString()),
+		RedirectUri:    "https://localhost:3000/oauth2/callback",
 		AuthCookieName: "bearer-auth",
 	}
 	fiberOidc, err := fiberoidc.New(ctx, fiberOidcConfig)
@@ -71,7 +86,7 @@ func NewApplication(daoSource servicedispatcher.DaoSource) *fiber.App {
 	app.Get("/", fiberOidc.UnprotectedRoute(), func(c *fiber.Ctx) error {
 		idToken := fiberoidc.IdTokenFromContext(c)
 		bind := make(map[string]any)
-		bind["ClientId"] = client.ClientId
+		bind["ClientId"] = staticClientId
 		bind["Issuer"] = fiberOidcConfig.Issuer
 		bind["RedirectUri"] = fiberOidcConfig.RedirectUri
 		if idToken == nil {

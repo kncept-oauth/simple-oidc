@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/kncept-oauth/simple-oidc/service/client"
-	"github.com/kncept-oauth/simple-oidc/service/dispatcher"
 	"github.com/kncept-oauth/simple-oidc/service/keys"
 	"github.com/kncept-oauth/simple-oidc/service/session"
 	"github.com/kncept-oauth/simple-oidc/service/users"
@@ -95,7 +95,7 @@ func RootDirFromWorkDir() (string, error) {
 	return os.Getwd()
 }
 
-func NewFilesystemDao() dispatcher.DaoSource {
+func NewFilesystemDao() DaoSource {
 	workDir, err := RootDirFromWorkDir()
 	if err != nil {
 		panic(err)
@@ -197,24 +197,24 @@ func (f *fsKeyStore) ListKeys() ([]string, error) {
 	return listDir(f.RootDir)
 }
 
-func (c *fsClientStore) GetClient(clientId string) (client.Client, error) {
+func (c *fsClientStore) GetClient(ctx context.Context, clientId string) (client.Client, error) {
 	val := &client.ClientStruct{}
 	err := readJson(c.RootDir, clientId, val)
 	return val, err
 }
 
-func (c *fsClientStore) SaveClient(client client.ClientStruct) error {
+func (c *fsClientStore) SaveClient(ctx context.Context, client client.ClientStruct) error {
 	return writeJson(c.RootDir, client.ClientId, client)
 }
 
-func (c *fsClientStore) ListClients() ([]client.Client, error) {
+func (c *fsClientStore) ListClients(ctx context.Context) ([]client.Client, error) {
 	ids, err := listDir(c.RootDir)
 	if err != nil {
 		return nil, err
 	}
 	clients := make([]client.Client, len(ids))
 	for idx, id := range ids {
-		client, err := c.GetClient(id)
+		client, err := c.GetClient(ctx, id)
 		if err != nil {
 			return nil, err
 		}

@@ -23,7 +23,7 @@ type Authorizer struct {
 }
 
 func (obj Authorizer) AuthorizeGet(ctx context.Context, params api.AuthorizeGetParams) (api.AuthorizeGetRes, error) {
-	client, err := obj.store.GetClient(params.ClientID)
+	client, err := obj.store.GetClient(ctx, params.ClientID)
 	if err != nil {
 		return nil, err
 	}
