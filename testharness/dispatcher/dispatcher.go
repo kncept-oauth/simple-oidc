@@ -2,6 +2,7 @@ package dispatcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -99,6 +100,38 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 	})
 
 	app.Post("/", func(c *fiber.Ctx) error {
+		payload := struct {
+			Op string
+			Id string
+		}{}
+		err := c.BodyParser(&payload)
+		if err != nil {
+			return err
+		}
+		switch payload.Op {
+		case "create":
+			c := &client.Client{
+				ClientId: uuid.NewString(),
+				AllowedRedirectUris: []string{
+					"https://localhost:3000/oauth2/callback",
+				},
+			}
+			daoSource.GetClientStore().SaveClient(ctx, c)
+		case "delete":
+			c, err := daoSource.GetClientStore().GetClient(ctx, payload.Id)
+			if err != nil {
+				return err
+			}
+			if c == nil {
+				return errors.New("no client with id " + payload.Id)
+			}
+			err = daoSource.GetClientStore().RemoveClient(ctx, payload.Id)
+			if err != nil {
+				return err
+			}
+
+		}
+
 		// dynamically pull form type & details to perform operation
 		// then redirect back to index
 		return c.Redirect("/")

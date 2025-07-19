@@ -223,6 +223,10 @@ func (c *fsClientStore) ListClients(ctx context.Context) ([]*client.Client, erro
 	return clients, nil
 }
 
+func (c *fsClientStore) RemoveClient(ctx context.Context, clientId string) error {
+	return deleteJson(c.RootDir, clientId)
+}
+
 func (c *fsUserStore) GetUser(id string) (*users.OidcUser, error) {
 	usr := &users.OidcUser{}
 	err := readJson(c.RootDir, id, usr)

@@ -20,4 +20,5 @@ type ClientStore interface {
 	GetClient(ctx context.Context, clientId string) (*Client, error)
 	SaveClient(ctx context.Context, client *Client) error
 	ListClients(ctx context.Context) ([]*Client, error)
+	RemoveClient(ctx context.Context, clientId string) error
 }

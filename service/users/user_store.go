@@ -90,11 +90,7 @@ func EncodePassword(salt, password string) (string, error) {
 	case EtSha512:
 		return hex.EncodeToString(sha512.New().Sum([]byte(password))), nil
 	case EtBcrypt:
-		fmt.Printf("Password: %v %v\n", len([]byte(password)), password)
 		data, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-		if err != nil {
-			panic(err)
-		}
 		return base64.StdEncoding.EncodeToString(data), err
 	default:
 		return "", fmt.Errorf("unsupported Encoding version %v", encodingType)

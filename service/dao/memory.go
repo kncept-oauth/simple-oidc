@@ -100,6 +100,11 @@ func (obj *MemoryDao) ListClients(ctx context.Context) ([]*client.Client, error)
 	return clients, nil
 }
 
+func (obj *MemoryDao) RemoveClient(ctx context.Context, clientId string) error {
+	obj.clients.Delete(clientId)
+	return nil
+}
+
 func (obj *MemoryDao) GetUser(id string) (*users.OidcUser, error) {
 	val, ok := obj.users.Load(id)
 	if !ok {
