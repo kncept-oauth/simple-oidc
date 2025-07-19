@@ -2,45 +2,22 @@ package client
 
 import "context"
 
-type Client interface {
-	GetClientId() string
+type Client struct {
+	ClientId string
 
-	// can return an empty array
-	GetAllowedScopes() []string
+	// can be an empty array (all scopes)
+	AllowedScopes []string
 
 	// treat the response from GetAllowedRedirectUris as a regex?
 	// RECOMMENDED TO BE FALSE
-	IsAllowedRedirectUriRegex() bool
+	AllowRegexForRedirectUri bool
 
 	// regex scripts for redirect uris
-	GetAllowedRedirectUris() []string
-}
-
-type ClientStruct struct {
-	ClientId                string
-	AllowedScopes           []string
-	RegexAllowedRedirectUri bool
-	AllowedRedirectUris     []string
+	AllowedRedirectUris []string
 }
 
 type ClientStore interface {
-	GetClient(ctx context.Context, clientId string) (Client, error)
-	SaveClient(ctx context.Context, client ClientStruct) error
-	ListClients(ctx context.Context) ([]Client, error)
-}
-
-func (obj ClientStruct) GetClientId() string {
-	return obj.ClientId
-}
-
-func (obj ClientStruct) GetAllowedScopes() []string {
-	return obj.AllowedScopes
-}
-
-func (obj ClientStruct) IsAllowedRedirectUriRegex() bool {
-	return obj.RegexAllowedRedirectUri
-}
-
-func (obj ClientStruct) GetAllowedRedirectUris() []string {
-	return obj.AllowedRedirectUris
+	GetClient(ctx context.Context, clientId string) (*Client, error)
+	SaveClient(ctx context.Context, client *Client) error
+	ListClients(ctx context.Context) ([]*Client, error)
 }

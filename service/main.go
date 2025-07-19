@@ -34,7 +34,7 @@ func main() {
 
 }
 
-func RunAsLambda(daoSource dispatcher.DaoSource, urlPrefix string) {
+func RunAsLambda(daoSource dao.DaoSource, urlPrefix string) {
 	srv, err := dispatcher.NewApplication(
 		daoSource,
 		urlPrefix,

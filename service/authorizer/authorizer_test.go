@@ -3,6 +3,7 @@ package authorizer
 import (
 	"testing"
 
+	"github.com/kncept-oauth/simple-oidc/service/client"
 	"github.com/kncept-oauth/simple-oidc/service/gen/api"
 )
 
@@ -13,13 +14,8 @@ func TestAuthorizerInterface(t *testing.T) {
 
 func isAuthorizationHandler(receiver api.AuthorizationHandler) {}
 
-func TestClientInterface(t *testing.T) {
-	isClient(&ClientStruct{})
-}
-func isClient(receiver Client) {}
-
 func TestRegexRedirectUriValidity(t *testing.T) {
-	client := &ClientStruct{
+	client := &client.Client{
 		AllowedRedirectUris: []string{
 			"http://valid/$",
 			"http://wildcard/.*$",
@@ -27,7 +23,7 @@ func TestRegexRedirectUriValidity(t *testing.T) {
 			"https://path/with/slash/",
 			"https://path/with/wildslah/*",
 		},
-		RegexAllowedRedirectUri: true,
+		AllowRegexForRedirectUri: true,
 	}
 	validStrings := []string{
 		"http://valid/",
@@ -63,13 +59,13 @@ func TestRegexRedirectUriValidity(t *testing.T) {
 }
 
 func TestPrefixRedirectUriValidity(t *testing.T) {
-	client := &ClientStruct{
+	client := &client.Client{
 		AllowedRedirectUris: []string{
 			"http://valid/",
 			"http://noslash",
 			"https://params?",
 		},
-		RegexAllowedRedirectUri: false,
+		AllowRegexForRedirectUri: false,
 	}
 
 	validStrings := []string{

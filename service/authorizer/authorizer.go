@@ -72,10 +72,10 @@ func (obj Authorizer) AuthorizeGet(ctx context.Context, params api.AuthorizeGetP
 	// redirect to a login/auth page
 }
 
-func isValidRedirectUri(client client.Client, redirectUri string) bool {
-	if client.IsAllowedRedirectUriRegex() {
+func isValidRedirectUri(client *client.Client, redirectUri string) bool {
+	if client.AllowRegexForRedirectUri {
 		// TOOD: Consider caching?
-		for _, allowedRedirectUri := range client.GetAllowedRedirectUris() {
+		for _, allowedRedirectUri := range client.AllowedRedirectUris {
 			// regex match https://pkg.go.dev/regexp
 			r, err := regexp.Compile(allowedRedirectUri)
 			if err != nil {
@@ -90,7 +90,7 @@ func isValidRedirectUri(client client.Client, redirectUri string) bool {
 	}
 
 	// else this is just a 'starts with'... MUCH simpler
-	for _, allowedRedirectUri := range client.GetAllowedRedirectUris() {
+	for _, allowedRedirectUri := range client.AllowedRedirectUris {
 		if strings.HasPrefix(redirectUri, allowedRedirectUri) {
 			return true
 		}

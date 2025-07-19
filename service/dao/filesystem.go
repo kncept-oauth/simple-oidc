@@ -197,22 +197,22 @@ func (f *fsKeyStore) ListKeys() ([]string, error) {
 	return listDir(f.RootDir)
 }
 
-func (c *fsClientStore) GetClient(ctx context.Context, clientId string) (client.Client, error) {
-	val := &client.ClientStruct{}
+func (c *fsClientStore) GetClient(ctx context.Context, clientId string) (*client.Client, error) {
+	val := &client.Client{}
 	err := readJson(c.RootDir, clientId, val)
 	return val, err
 }
 
-func (c *fsClientStore) SaveClient(ctx context.Context, client client.ClientStruct) error {
+func (c *fsClientStore) SaveClient(ctx context.Context, client *client.Client) error {
 	return writeJson(c.RootDir, client.ClientId, client)
 }
 
-func (c *fsClientStore) ListClients(ctx context.Context) ([]client.Client, error) {
+func (c *fsClientStore) ListClients(ctx context.Context) ([]*client.Client, error) {
 	ids, err := listDir(c.RootDir)
 	if err != nil {
 		return nil, err
 	}
-	clients := make([]client.Client, len(ids))
+	clients := make([]*client.Client, len(ids))
 	for idx, id := range ids {
 		client, err := c.GetClient(ctx, id)
 		if err != nil {

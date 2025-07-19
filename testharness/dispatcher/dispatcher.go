@@ -26,7 +26,7 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 	// http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	viewEngine := html.NewFileSystem(http.FS(webcontent.Views), ".html")
-	viewEngine.AddFunc("Clients", func() []client.Client {
+	viewEngine.AddFunc("Clients", func() []*client.Client {
 		clients, _ := daoSource.GetClientStore().ListClients(ctx)
 		return clients
 	})
@@ -39,7 +39,7 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 	)
 
 	// most basic client
-	c := &client.ClientStruct{
+	c := &client.Client{
 		ClientId: staticClientId,
 		AllowedRedirectUris: []string{
 			"https://localhost:3000/oauth2/callback",
@@ -48,7 +48,7 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 		// 	"https://localhost:3000/",
 		// },
 	}
-	daoSource.GetClientStore().SaveClient(ctx, *c)
+	daoSource.GetClientStore().SaveClient(ctx, c)
 
 	// c = &client.Client{
 	// 	ClientId: uuid.NewString(),

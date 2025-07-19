@@ -6,9 +6,10 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"math/rand"
 	"strings"
+	"time"
 
-	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -51,6 +52,16 @@ func ToEncodingType(s string) EncodingType {
 	return EtNone
 }
 
+func generateRandomString(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	seededRand := rand.New(rand.NewSource(time.Now().UnixNano())) // Seed the random number generator
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[seededRand.Intn(len(charset))]
+	}
+	return string(b)
+}
+
 func GenerateSalt(encodingVersions ...EncodingType) string {
 	if len(encodingVersions) > 1 {
 		panic("must supply at most one encoding version")
@@ -58,14 +69,14 @@ func GenerateSalt(encodingVersions ...EncodingType) string {
 	if len(encodingVersions) == 0 {
 		encodingVersions = []EncodingType{EtBcrypt} // default to latest
 	}
-	return fmt.Sprintf("%v:%v", encodingVersions[0], uuid.NewString())
+	return fmt.Sprintf("%v:%v", encodingVersions[0], generateRandomString(16))
 }
 func GetEncodingType(salt string) EncodingType {
 	idx := strings.Index(salt, ":")
 	if idx == -1 {
 		return ToEncodingType(salt)
 	}
-	return ToEncodingType(salt[0:idx])
+	return ToEncodingType(salt[:idx])
 }
 
 func EncodePassword(salt, password string) (string, error) {
@@ -79,7 +90,11 @@ func EncodePassword(salt, password string) (string, error) {
 	case EtSha512:
 		return hex.EncodeToString(sha512.New().Sum([]byte(password))), nil
 	case EtBcrypt:
+		fmt.Printf("Password: %v %v\n", len([]byte(password)), password)
 		data, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			panic(err)
+		}
 		return base64.StdEncoding.EncodeToString(data), err
 	default:
 		return "", fmt.Errorf("unsupported Encoding version %v", encodingType)

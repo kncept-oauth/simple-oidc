@@ -68,16 +68,16 @@ func (obj *MemoryDao) ListKeys() ([]string, error) {
 }
 
 // GetClient implements authorizer.ClientStore.
-func (obj *MemoryDao) GetClient(ctx context.Context, clientId string) (client.Client, error) {
+func (obj *MemoryDao) GetClient(ctx context.Context, clientId string) (*client.Client, error) {
 	c, ok := obj.clients.Load(clientId)
 	if ok {
-		return c.(client.Client), nil
+		return c.(*client.Client), nil
 	}
 	return nil, nil
 }
 
 // Save implements authorizer.ClientStore.
-func (obj *MemoryDao) SaveClient(ctx context.Context, c client.ClientStruct) error {
+func (obj *MemoryDao) SaveClient(ctx context.Context, c *client.Client) error {
 	existing, err := obj.GetClient(ctx, c.ClientId)
 	if err != nil {
 		return err
@@ -89,10 +89,10 @@ func (obj *MemoryDao) SaveClient(ctx context.Context, c client.ClientStruct) err
 	return nil
 }
 
-func (obj *MemoryDao) ListClients(ctx context.Context) ([]client.Client, error) {
-	clients := make([]client.Client, 0)
+func (obj *MemoryDao) ListClients(ctx context.Context) ([]*client.Client, error) {
+	clients := make([]*client.Client, 0)
 	obj.clients.Range(func(key, value any) bool {
-		if c, ok := value.(client.Client); ok {
+		if c, ok := value.(*client.Client); ok {
 			clients = append(clients, c)
 		}
 		return true

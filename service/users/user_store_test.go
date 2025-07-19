@@ -7,32 +7,32 @@ import (
 )
 
 func TestEncodeAndCompareNone(t *testing.T) {
-	salt := uuid.NewString()
+	salt := GenerateSalt(EtNone)
 	password := uuid.NewString()
-	encodeAndCompareType(t, salt, password, EtNone)
+	encodeAndCompareType(t, salt, password)
 }
 func TestEncodeAndCompareMD5(t *testing.T) {
-	salt := uuid.NewString()
+	salt := GenerateSalt(EtMd5)
 	password := uuid.NewString()
-	encodeAndCompareType(t, salt, password, EtMd5)
+	encodeAndCompareType(t, salt, password)
 }
 func TestEncodeAndCompareSha512(t *testing.T) {
-	salt := uuid.NewString()
+	salt := GenerateSalt(EtSha512)
 	password := uuid.NewString()
-	encodeAndCompareType(t, salt, password, EtSha512)
+	encodeAndCompareType(t, salt, password)
 }
 func TestEncodeAndCompareBcrypt(t *testing.T) {
-	salt := uuid.NewString()
-	password := uuid.NewString()
-	encodeAndCompareType(t, salt, password, EtBcrypt)
+	salt := GenerateSalt(EtBcrypt)
+	password := uuid.NewString() // max 72 bytes length(!)
+	encodeAndCompareType(t, salt, password)
 }
 
-func encodeAndCompareType(t *testing.T, salt, password string, encodingType EncodingType) {
-	encoded, err := EncodePassword(salt, password, encodingType)
+func encodeAndCompareType(t *testing.T, salt, password string) {
+	encoded, err := EncodePassword(salt, password)
 	if err != nil {
 		t.Fatalf("error encoding password: %v", err)
 	}
-	reEncoded, err := EncodePassword(password, salt, encodingType)
+	reEncoded, err := EncodePassword(password, salt)
 	if err != nil {
 		t.Fatalf("error encoding password: %v", err)
 	}
@@ -40,17 +40,17 @@ func encodeAndCompareType(t *testing.T, salt, password string, encodingType Enco
 		t.Fatalf("must not be able to generate the same password with salt/password reversed")
 	}
 
-	pwMatches := ComparePassword(salt, password, reEncoded, encodingType)
+	pwMatches := ComparePassword(salt, password, reEncoded)
 	if pwMatches {
 		t.Fatalf("must not be able to match incorrect hash ")
 	}
 
-	pwMatches = ComparePassword(salt, password, encoded, encodingType)
+	pwMatches = ComparePassword(salt, password, encoded)
 	if !pwMatches {
 		t.Fatalf("password should have matched")
 	}
 
-	pwMatches = ComparePassword(salt, password, uuid.NewString(), encodingType)
+	pwMatches = ComparePassword(salt, password, uuid.NewString())
 	if pwMatches {
 		t.Fatalf("must not be able to match random hash ")
 	}
