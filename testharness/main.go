@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"sync"
@@ -19,6 +20,8 @@ import (
 
 func main() {
 	var wg sync.WaitGroup
+
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	datastore := servicedao.NewMemoryDao()
 
@@ -68,6 +71,7 @@ func RunAppAsHttps(daoSource dao.DaoSource) (*fiber.App, error) {
 	if err != nil || len(x509Cert) == 0 {
 		generateCerts = true
 	}
+
 	if !generateCerts {
 		pkcs8PrivateKey, err = os.ReadFile("server.key")
 		generateCerts = err != nil || len(pkcs8PrivateKey) == 0

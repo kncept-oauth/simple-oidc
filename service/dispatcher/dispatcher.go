@@ -37,6 +37,8 @@ func NewApplication(daoSource dao.DaoSource, urlPrefix string) (http.HandlerFunc
 	serveMux.Handle("/account", acceptOidcHandler.myAccountHandler())
 	serveMux.Handle("/style.css", acceptOidcHandler.respondWithStaticFile("style.css", "text/css", 200))
 
+	serveMux.Handle("/confirm", acceptOidcHandler.confirmedLogin())
+
 	server, err := api.NewServer(
 		&oapiDispatcher{
 			authorizer: authorizer.NewAuthorizer(

@@ -65,9 +65,9 @@ func (obj *oapiDispatcher) Jwks(ctx context.Context) (*api.JWKSetResponse, error
 func (obj *oapiDispatcher) OpenIdConfiguration(ctx context.Context) (*api.OpenIDProviderMetadataResponse, error) {
 	return &api.OpenIDProviderMetadataResponse{
 		Issuer:                obj.Issuer,
-		AuthorizationEndpoint: "/authorize",
-		TokenEndpoint:         "todo",
-		JwksURI:               "/.well-known/jwks.json",
+		AuthorizationEndpoint: fmt.Sprintf("%v/authorize", obj.Issuer),
+		TokenEndpoint:         fmt.Sprintf("%v/token", obj.Issuer),
+		JwksURI:               fmt.Sprintf("%v/.well-known/jwks.json", obj.Issuer),
 	}, nil
 
 	// fmt.Printf("TODO: OpenIdConfiguration\n")

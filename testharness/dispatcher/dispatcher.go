@@ -24,7 +24,6 @@ const staticClientId = "static-client-id"
 func NewApplication(daoSource dao.DaoSource) *fiber.App {
 	ctx := context.Background()
 	fmt.Printf("New Testharness Application\n")
-	// http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	viewEngine := html.NewFileSystem(http.FS(webcontent.Views), ".html")
 	viewEngine.AddFunc("Clients", func() []*client.Client {
@@ -109,6 +108,8 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 			return err
 		}
 		switch payload.Op {
+		case "init":
+			fiberOidc.Initialize(c.Context())
 		case "create":
 			c := &client.Client{
 				ClientId: uuid.NewString(),
@@ -129,7 +130,6 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 			if err != nil {
 				return err
 			}
-
 		}
 
 		// dynamically pull form type & details to perform operation

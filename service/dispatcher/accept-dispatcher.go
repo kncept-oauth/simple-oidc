@@ -81,6 +81,62 @@ func (obj *acceptOidcHandler) userClaims(req *http.Request) *session.AuthTokenJw
 
 }
 
+func (obj *acceptOidcHandler) confirmedLogin() http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+
+		soCurrentParams := ""
+		soCurrentCookie, _ := req.Cookie(CurrentOperationParamsCookieName)
+		if soCurrentCookie != nil {
+			soCurrentParams = soCurrentCookie.Value
+		}
+		soCurrent, err := params.OidcParamsFromQuery(soCurrentParams)
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			res.WriteHeader(500)
+			return
+		}
+
+		stateMap := params.QueryParamsToMap(req.URL)
+		if len(stateMap) != 0 {
+			updatedOidcParams := params.OidcParamsFromMap(stateMap)
+			soCurrent.Merge(updatedOidcParams)
+
+			soCurrentCookie = &http.Cookie{
+				Name:  CurrentOperationParamsCookieName,
+				Value: soCurrent.ToQueryParams(),
+				// Path:     "/",
+				MaxAge:   15 * 60, // 15 min
+				HttpOnly: true,
+				SameSite: http.SameSiteDefaultMode,
+			}
+			http.SetCookie(res, soCurrentCookie)
+			res.Header().Add("Location", "/accept")
+			res.WriteHeader(302)
+			return
+		}
+
+		if !soCurrent.IsValid() {
+			// TODO: Send to an 'invalid state' page (unrecoverable)
+			res.WriteHeader(400)
+			return
+		}
+
+		userId := obj.userId(req)
+		if userId == "" {
+			res.WriteHeader(400)
+			// res.Header().Add("Location", "/authorize")
+			// res.WriteHeader(302)
+			return
+		}
+
+		// DO WHATEVER STATE WE NEED TO HERE
+
+		res.Header().Add("Location", soCurrent.RedirectUri)
+		res.WriteHeader(302)
+
+	}
+}
+
 func (obj *acceptOidcHandler) acceptLogin() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 

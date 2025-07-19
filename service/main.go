@@ -25,13 +25,12 @@ func main() {
 
 	switch runmode {
 	case "aws-lambda":
-		RunAsLambda(dao.NewFilesystemDao(), "https://localhost:8443")
+		RunAsLambda(dao.NewDynamoDbDao(), "https://localhost:8443")
 	case "dev":
 		development.RunLocally(dao.NewFilesystemDao(), "https://localhost:8443")
 	default:
 		panic(fmt.Errorf("unknown run mode: %v", runmode))
 	}
-
 }
 
 func RunAsLambda(daoSource dao.DaoSource, urlPrefix string) {
