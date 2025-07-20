@@ -9,7 +9,6 @@ import (
 // Handler handles operations described by OpenAPI v3 specification.
 type Handler interface {
 	AuthorizationHandler
-	IndexHandler
 	WellKnownHandler
 	// NewError creates *ErrRespStatusCode from error returned by handler.
 	//
@@ -27,18 +26,12 @@ type AuthorizationHandler interface {
 	//
 	// GET /authorize
 	AuthorizeGet(ctx context.Context, params AuthorizeGetParams) (AuthorizeGetRes, error)
-}
-
-// IndexHandler handles operations described by OpenAPI v3 specification.
-//
-// x-ogen-operation-group: Index
-type IndexHandler interface {
-	// Index implements Index operation.
+	// TokenPost implements POST /token operation.
 	//
-	// Root URL.
+	// Token Exchange Endpoint.
 	//
-	// GET /
-	Index(ctx context.Context) (IndexOK, error)
+	// POST /token
+	TokenPost(ctx context.Context, params TokenPostParams) (TokenPostRes, error)
 }
 
 // WellKnownHandler handles operations described by OpenAPI v3 specification.

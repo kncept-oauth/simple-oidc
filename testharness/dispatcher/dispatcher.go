@@ -23,7 +23,6 @@ const staticClientId = "static-client-id"
 
 func NewApplication(daoSource dao.DaoSource) *fiber.App {
 	ctx := context.Background()
-	fmt.Printf("New Testharness Application\n")
 
 	viewEngine := html.NewFileSystem(http.FS(webcontent.Views), ".html")
 	viewEngine.AddFunc("Clients", func() []*client.Client {

@@ -22,15 +22,6 @@ func (UnimplementedHandler) AuthorizeGet(ctx context.Context, params AuthorizeGe
 	return r, ht.ErrNotImplemented
 }
 
-// Index implements Index operation.
-//
-// Root URL.
-//
-// GET /
-func (UnimplementedHandler) Index(ctx context.Context) (r IndexOK, _ error) {
-	return r, ht.ErrNotImplemented
-}
-
 // Jwks implements jwks operation.
 //
 // Json Web Keyset.
@@ -46,6 +37,15 @@ func (UnimplementedHandler) Jwks(ctx context.Context) (r *JWKSetResponse, _ erro
 //
 // GET /.well-known/openid-configuration
 func (UnimplementedHandler) OpenIdConfiguration(ctx context.Context) (r *OpenIDProviderMetadataResponse, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// TokenPost implements POST /token operation.
+//
+// Token Exchange Endpoint.
+//
+// POST /token
+func (UnimplementedHandler) TokenPost(ctx context.Context, params TokenPostParams) (r TokenPostRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 

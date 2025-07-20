@@ -81,7 +81,7 @@ func (obj *acceptOidcHandler) userClaims(req *http.Request) *session.AuthTokenJw
 
 }
 
-func (obj *acceptOidcHandler) confirmedLogin() http.HandlerFunc {
+func (obj *acceptOidcHandler) confirmLogin() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 
 		soCurrentParams := ""
@@ -130,6 +130,10 @@ func (obj *acceptOidcHandler) confirmedLogin() http.HandlerFunc {
 		}
 
 		// DO WHATEVER STATE WE NEED TO HERE
+		// need to poke some values BACK HERE!!
+
+		// state := soCurrent.State
+		// code := state saver!!
 
 		res.Header().Add("Location", soCurrent.RedirectUri)
 		res.WriteHeader(302)

@@ -57,14 +57,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if len(elem) == 0 {
-				switch r.Method {
-				case "GET":
-					s.handleIndexRequest([0]string{}, elemIsEscaped, w, r)
-				default:
-					s.notAllowed(w, r, "GET")
-				}
-
-				return
+				break
 			}
 			switch elem[0] {
 			case '.': // Prefix: ".well-known/"
@@ -139,6 +132,27 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						s.handleAuthorizeGetRequest([0]string{}, elemIsEscaped, w, r)
 					default:
 						s.notAllowed(w, r, "GET")
+					}
+
+					return
+				}
+
+				elem = origElem
+			case 't': // Prefix: "token"
+				origElem := elem
+				if l := len("token"); len(elem) >= l && elem[0:l] == "token" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch r.Method {
+					case "POST":
+						s.handleTokenPostRequest([0]string{}, elemIsEscaped, w, r)
+					default:
+						s.notAllowed(w, r, "POST")
 					}
 
 					return
@@ -237,18 +251,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 			}
 
 			if len(elem) == 0 {
-				switch method {
-				case "GET":
-					r.name = IndexOperation
-					r.summary = ""
-					r.operationID = "Index"
-					r.pathPattern = "/"
-					r.args = args
-					r.count = 0
-					return r, true
-				default:
-					return
-				}
+				break
 			}
 			switch elem[0] {
 			case '.': // Prefix: ".well-known/"
@@ -332,6 +335,31 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						r.summary = ""
 						r.operationID = ""
 						r.pathPattern = "/authorize"
+						r.args = args
+						r.count = 0
+						return r, true
+					default:
+						return
+					}
+				}
+
+				elem = origElem
+			case 't': // Prefix: "token"
+				origElem := elem
+				if l := len("token"); len(elem) >= l && elem[0:l] == "token" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch method {
+					case "POST":
+						r.name = TokenPostOperation
+						r.summary = ""
+						r.operationID = ""
+						r.pathPattern = "/token"
 						r.args = args
 						r.count = 0
 						return r, true

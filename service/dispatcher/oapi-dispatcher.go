@@ -4,34 +4,22 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/kncept-oauth/simple-oidc/service/authorizer"
 	"github.com/kncept-oauth/simple-oidc/service/dao"
 	"github.com/kncept-oauth/simple-oidc/service/gen/api"
-	"github.com/kncept-oauth/simple-oidc/service/webcontent"
 )
 
 type oapiDispatcher struct {
-	authorizer authorizer.Authorizer
-	Issuer     string
-	daoSource  dao.DaoSource
+	authorizationHandler
+	wellKnownHandler
 }
 
-func (obj *oapiDispatcher) AuthorizeGet(ctx context.Context, params api.AuthorizeGetParams) (api.AuthorizeGetRes, error) {
-	return obj.authorizer.AuthorizeGet(ctx, params)
+type wellKnownHandler struct {
+	DaoSource dao.DaoSource
+	Issuer    string
 }
 
-func (obj *oapiDispatcher) Index(ctx context.Context) (api.IndexOK, error) {
-	file, err := webcontent.Fs.Open("index.html")
-	if err != nil {
-		return api.IndexOK{}, err
-	}
-	return api.IndexOK{
-		Data: file,
-	}, nil
-}
-
-func (obj *oapiDispatcher) Jwks(ctx context.Context) (*api.JWKSetResponse, error) {
-	keyStore := obj.daoSource.GetKeyStore()
+func (obj *wellKnownHandler) Jwks(ctx context.Context) (*api.JWKSetResponse, error) {
+	keyStore := obj.DaoSource.GetKeyStore()
 	keys, err := keyStore.ListKeys()
 	if err != nil {
 		return nil, err
@@ -62,7 +50,11 @@ func (obj *oapiDispatcher) Jwks(ctx context.Context) (*api.JWKSetResponse, error
 		Keys: responseKeys,
 	}, nil
 }
-func (obj *oapiDispatcher) OpenIdConfiguration(ctx context.Context) (*api.OpenIDProviderMetadataResponse, error) {
+
+// additional rURL eferences and examples:
+// https://appleid.apple.com/.well-known/openid-configuration
+// https://accounts.google.com/.well-known/openid-configuration
+func (obj *wellKnownHandler) OpenIdConfiguration(ctx context.Context) (*api.OpenIDProviderMetadataResponse, error) {
 	return &api.OpenIDProviderMetadataResponse{
 		Issuer:                obj.Issuer,
 		AuthorizationEndpoint: fmt.Sprintf("%v/authorize", obj.Issuer),

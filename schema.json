@@ -66,32 +66,6 @@
                 }
             }
         },
-        "/": {
-            "x-ogen-operation-group": "Index",
-            "get": {
-                "operationId": "Index",
-                "description": "Root URL",
-                "parameters": [],
-                "responses": {
-                    "200": {
-                        "description": "Noop operation, render a splash page",
-                        "content": {
-                            "text/html": {}
-                        }
-                    },
-                    "default": {
-                        "description": "error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/authorize": {
             "x-ogen-operation-group": "Authorization",
             "get": {

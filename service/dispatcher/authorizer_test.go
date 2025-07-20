@@ -1,18 +1,10 @@
-package authorizer
+package dispatcher
 
 import (
 	"testing"
 
 	"github.com/kncept-oauth/simple-oidc/service/client"
-	"github.com/kncept-oauth/simple-oidc/service/gen/api"
 )
-
-func TestAuthorizerInterface(t *testing.T) {
-	isAuthorizationHandler(&Authorizer{})
-
-}
-
-func isAuthorizationHandler(receiver api.AuthorizationHandler) {}
 
 func TestRegexRedirectUriValidity(t *testing.T) {
 	client := &client.Client{

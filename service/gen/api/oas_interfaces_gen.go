@@ -4,3 +4,7 @@ package api
 type AuthorizeGetRes interface {
 	authorizeGetRes()
 }
+
+type TokenPostRes interface {
+	tokenPostRes()
+}

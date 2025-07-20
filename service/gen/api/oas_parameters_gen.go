@@ -302,3 +302,200 @@ func decodeAuthorizeGetParams(args [0]string, argsEscaped bool, r *http.Request)
 	}
 	return params, nil
 }
+
+// TokenPostParams is parameters of POST /token operation.
+type TokenPostParams struct {
+	// Is this required or not?.
+	GrantType   OptString
+	ClientID    string
+	Code        string
+	RedirectURI string
+}
+
+func unpackTokenPostParams(packed middleware.Parameters) (params TokenPostParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "grant_type",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.GrantType = v.(OptString)
+		}
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "client_id",
+			In:   "query",
+		}
+		params.ClientID = packed[key].(string)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "code",
+			In:   "query",
+		}
+		params.Code = packed[key].(string)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "redirect_uri",
+			In:   "query",
+		}
+		params.RedirectURI = packed[key].(string)
+	}
+	return params
+}
+
+func decodeTokenPostParams(args [0]string, argsEscaped bool, r *http.Request) (params TokenPostParams, _ error) {
+	q := uri.NewQueryDecoder(r.URL.Query())
+	// Decode query: grant_type.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "grant_type",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotGrantTypeVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotGrantTypeVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.GrantType.SetTo(paramsDotGrantTypeVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "grant_type",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: client_id.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "client_id",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.ClientID = c
+				return nil
+			}); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "client_id",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: code.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "code",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.Code = c
+				return nil
+			}); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "code",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: redirect_uri.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "redirect_uri",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.RedirectURI = c
+				return nil
+			}); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "redirect_uri",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	return params, nil
+}

@@ -62,7 +62,7 @@ func RunLocally(daoSource dao.DaoSource, urlPrefix string) (*http.Server, error)
 	}
 
 	go func() {
-		fmt.Printf("Starting App on http://localhost:%s/\n", appPort)
+		fmt.Printf("Starting App on https://localhost:%s/\n", appPort)
 		if err := server.ListenAndServeTLS("", ""); err != nil {
 			if http.ErrServerClosed != err { // _why_ is this an error?
 				panic(err)

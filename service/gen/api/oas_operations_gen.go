@@ -7,7 +7,7 @@ type OperationName = string
 
 const (
 	AuthorizeGetOperation        OperationName = "AuthorizeGet"
-	IndexOperation               OperationName = "Index"
 	JwksOperation                OperationName = "Jwks"
 	OpenIdConfigurationOperation OperationName = "OpenIdConfiguration"
+	TokenPostOperation           OperationName = "TokenPost"
 )

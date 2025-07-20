@@ -1,7 +1,8 @@
-package authorizer
+package dispatcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"regexp"
@@ -12,17 +13,15 @@ import (
 	"github.com/kncept-oauth/simple-oidc/service/gen/api"
 )
 
-func NewAuthorizer(store client.ClientStore) Authorizer {
-	return Authorizer{
-		store: store,
-	}
-}
-
-type Authorizer struct {
+type authorizationHandler struct {
 	store client.ClientStore
 }
 
-func (obj Authorizer) AuthorizeGet(ctx context.Context, params api.AuthorizeGetParams) (api.AuthorizeGetRes, error) {
+func (obj *authorizationHandler) TokenPost(ctx context.Context, params api.TokenPostParams) (api.TokenPostRes, error) {
+	return nil, errors.ErrUnsupported
+}
+
+func (obj authorizationHandler) AuthorizeGet(ctx context.Context, params api.AuthorizeGetParams) (api.AuthorizeGetRes, error) {
 	client, err := obj.store.GetClient(ctx, params.ClientID)
 	if err != nil {
 		return nil, err

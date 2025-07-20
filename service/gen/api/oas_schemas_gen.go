@@ -74,20 +74,6 @@ func (s *ErrRespStatusCode) SetResponse(val string) {
 	s.Response = val
 }
 
-type IndexOK struct {
-	Data io.Reader
-}
-
-// Read reads data from the Data reader.
-//
-// Kept to satisfy the io.Reader interface.
-func (s IndexOK) Read(p []byte) (n int, err error) {
-	if s.Data == nil {
-		return 0, io.EOF
-	}
-	return s.Data.Read(p)
-}
-
 // Ref: #/components/schemas/JWKResponse
 type JWKResponse struct {
 	Kty    OptString `json:"kty"`
@@ -231,6 +217,67 @@ func (s *LoginCookie) SetAPIKey(val string) {
 	s.APIKey = val
 }
 
+// Ref: #/components/schemas/LoginTokens
+type LoginTokens struct {
+	AccessToken  string  `json:"access_token"`
+	TokenType    string  `json:"token_type"`
+	ExpiresIn    float64 `json:"expires_in"`
+	IDToken      string  `json:"id_token"`
+	RefreshToken string  `json:"refresh_token"`
+}
+
+// GetAccessToken returns the value of AccessToken.
+func (s *LoginTokens) GetAccessToken() string {
+	return s.AccessToken
+}
+
+// GetTokenType returns the value of TokenType.
+func (s *LoginTokens) GetTokenType() string {
+	return s.TokenType
+}
+
+// GetExpiresIn returns the value of ExpiresIn.
+func (s *LoginTokens) GetExpiresIn() float64 {
+	return s.ExpiresIn
+}
+
+// GetIDToken returns the value of IDToken.
+func (s *LoginTokens) GetIDToken() string {
+	return s.IDToken
+}
+
+// GetRefreshToken returns the value of RefreshToken.
+func (s *LoginTokens) GetRefreshToken() string {
+	return s.RefreshToken
+}
+
+// SetAccessToken sets the value of AccessToken.
+func (s *LoginTokens) SetAccessToken(val string) {
+	s.AccessToken = val
+}
+
+// SetTokenType sets the value of TokenType.
+func (s *LoginTokens) SetTokenType(val string) {
+	s.TokenType = val
+}
+
+// SetExpiresIn sets the value of ExpiresIn.
+func (s *LoginTokens) SetExpiresIn(val float64) {
+	s.ExpiresIn = val
+}
+
+// SetIDToken sets the value of IDToken.
+func (s *LoginTokens) SetIDToken(val string) {
+	s.IDToken = val
+}
+
+// SetRefreshToken sets the value of RefreshToken.
+func (s *LoginTokens) SetRefreshToken(val string) {
+	s.RefreshToken = val
+}
+
+func (*LoginTokens) tokenPostRes() {}
+
 // Ref: #/components/schemas/OpenIDProviderMetadataResponse
 type OpenIDProviderMetadataResponse struct {
 	Issuer                string `json:"issuer"`
@@ -324,3 +371,7 @@ func (o OptString) Or(d string) string {
 	}
 	return d
 }
+
+type TokenPostBadRequestApplicationJSON string
+
+func (*TokenPostBadRequestApplicationJSON) tokenPostRes() {}
