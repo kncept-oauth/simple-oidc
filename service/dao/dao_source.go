@@ -10,7 +10,10 @@ import (
 type DaoSource interface {
 	GetClientStore() client.ClientStore                           // clients
 	GetClientAuthorizationStore() client.ClientAuthorizationStore // client sessions
-	GetKeyStore() keys.Keystore                                   // encryption keys
-	GetUserStore() users.UserStore                                // simple-oidc registered users. TODO: Move to a "User" and "UserAuth" model
-	GetSessionStore() session.SessionStore                        // simple-oidc sessions
+
+	GetAuthorizationCodeStore() client.AuthorizationCodeStore
+
+	GetKeyStore() keys.Keystore            // encryption keys
+	GetUserStore() users.UserStore         // simple-oidc registered users. TODO: Move to a "User" and "UserAuth" model
+	GetSessionStore() session.SessionStore // simple-oidc sessions (not connected to auth clients)
 }

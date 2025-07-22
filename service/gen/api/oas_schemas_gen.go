@@ -372,6 +372,62 @@ func (o OptString) Or(d string) string {
 	return d
 }
 
+type TokenPostApplicationJSON TokenRequestBody
+
+func (*TokenPostApplicationJSON) tokenPostReq() {}
+
+type TokenPostApplicationXWwwFormUrlencoded TokenRequestBody
+
+func (*TokenPostApplicationXWwwFormUrlencoded) tokenPostReq() {}
+
 type TokenPostBadRequestApplicationJSON string
 
 func (*TokenPostBadRequestApplicationJSON) tokenPostRes() {}
+
+// Ref: #/components/schemas/TokenRequestBody
+type TokenRequestBody struct {
+	Code        string    `json:"code"`
+	GrantType   OptString `json:"grant_type"`
+	ClientID    OptString `json:"client_id"`
+	RedirectURI OptString `json:"redirect_uri"`
+}
+
+// GetCode returns the value of Code.
+func (s *TokenRequestBody) GetCode() string {
+	return s.Code
+}
+
+// GetGrantType returns the value of GrantType.
+func (s *TokenRequestBody) GetGrantType() OptString {
+	return s.GrantType
+}
+
+// GetClientID returns the value of ClientID.
+func (s *TokenRequestBody) GetClientID() OptString {
+	return s.ClientID
+}
+
+// GetRedirectURI returns the value of RedirectURI.
+func (s *TokenRequestBody) GetRedirectURI() OptString {
+	return s.RedirectURI
+}
+
+// SetCode sets the value of Code.
+func (s *TokenRequestBody) SetCode(val string) {
+	s.Code = val
+}
+
+// SetGrantType sets the value of GrantType.
+func (s *TokenRequestBody) SetGrantType(val OptString) {
+	s.GrantType = val
+}
+
+// SetClientID sets the value of ClientID.
+func (s *TokenRequestBody) SetClientID(val OptString) {
+	s.ClientID = val
+}
+
+// SetRedirectURI sets the value of RedirectURI.
+func (s *TokenRequestBody) SetRedirectURI(val OptString) {
+	s.RedirectURI = val
+}

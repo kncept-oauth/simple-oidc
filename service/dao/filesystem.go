@@ -52,7 +52,6 @@ func listDir(rootDir string) ([]string, error) {
 	return dirs, nil
 }
 
-// GetKeyStore implements dispatcher.DaoSource.
 func (obj *FilesystemDao) GetKeyStore() keys.Keystore {
 	return &fsKeyStore{
 		RootDir: path.Join(obj.RootDir, "keys"),
@@ -83,6 +82,12 @@ func (obj *FilesystemDao) GetClientAuthorizationStore() client.ClientAuthorizati
 	}
 }
 
+func (obj *FilesystemDao) GetAuthorizationCodeStore() client.AuthorizationCodeStore {
+	return &authorizationCodeStore{
+		RootDir: path.Join(obj.RootDir, "authorization-codes"),
+	}
+}
+
 // returns things like /tmp/go-build2313914230/b001 in test
 func RootDirFromExePath() (string, error) {
 	ex, err := os.Executable()
@@ -100,6 +105,7 @@ func NewFilesystemDao() DaoSource {
 	if err != nil {
 		panic(err)
 	}
+	workDir = path.Join(workDir, ".data")
 	return &FilesystemDao{
 		RootDir: workDir,
 	}
@@ -122,6 +128,10 @@ type fsSessionStore struct {
 }
 
 type clientAuthorizationStore struct {
+	RootDir string
+}
+
+type authorizationCodeStore struct {
 	RootDir string
 }
 
@@ -243,4 +253,16 @@ func (c *fsSessionStore) LoadSession(sessionId string) (*session.Session, error)
 	ses := &session.Session{}
 	err := readJson(c.RootDir, sessionId, ses)
 	return ses, err
+}
+
+// GetAuthorizationCode implements client.AuthorizationCodeStore.
+func (a *authorizationCodeStore) GetAuthorizationCode(ctx context.Context, code string) (*client.AuthorizationCode, error) {
+	c := &client.AuthorizationCode{}
+	err := readJson(a.RootDir, code, c)
+	return c, err
+}
+
+// SaveAuthorizationCode implements client.AuthorizationCodeStore.
+func (a *authorizationCodeStore) SaveAuthorizationCode(ctx context.Context, code *client.AuthorizationCode) error {
+	return writeJson(a.RootDir, code.Code, code)
 }

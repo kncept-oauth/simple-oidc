@@ -42,5 +42,14 @@ func JwtToClaims(jwt string, key *rsa.PublicKey, dst any) error {
 		return err
 	}
 	return cjwt.ParseClaims([]byte(jwt), verifier, dst)
+}
 
+// MINIMAL id claims JWT
+type IdClaimsJwt struct {
+	Iss string `json:"iss"` // issuer
+	Sub string `json:"sub"` // subject
+	Aud string `json:"aud"` // audience
+	Exp int64  `json:"exp"` // expiry
+	Nbf int64  `json:"nbf"` // not before
+	Iat int64  `json:"iat"` // issued at
 }

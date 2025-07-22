@@ -45,7 +45,7 @@ func (UnimplementedHandler) OpenIdConfiguration(ctx context.Context) (r *OpenIDP
 // Token Exchange Endpoint.
 //
 // POST /token
-func (UnimplementedHandler) TokenPost(ctx context.Context, params TokenPostParams) (r TokenPostRes, _ error) {
+func (UnimplementedHandler) TokenPost(ctx context.Context, req TokenPostReq) (r TokenPostRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 

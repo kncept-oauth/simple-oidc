@@ -5,6 +5,10 @@ type AuthorizeGetRes interface {
 	authorizeGetRes()
 }
 
+type TokenPostReq interface {
+	tokenPostReq()
+}
+
 type TokenPostRes interface {
 	tokenPostRes()
 }

@@ -43,7 +43,7 @@ type AuthorizationInvoker interface {
 	// Token Exchange Endpoint.
 	//
 	// POST /token
-	TokenPost(ctx context.Context, params TokenPostParams) (TokenPostRes, error)
+	TokenPost(ctx context.Context, request TokenPostReq) (TokenPostRes, error)
 }
 
 // WellKnownInvoker invokes operations described by OpenAPI v3 specification.
@@ -466,12 +466,12 @@ func (c *Client) sendOpenIdConfiguration(ctx context.Context) (res *OpenIDProvid
 // Token Exchange Endpoint.
 //
 // POST /token
-func (c *Client) TokenPost(ctx context.Context, params TokenPostParams) (TokenPostRes, error) {
-	res, err := c.sendTokenPost(ctx, params)
+func (c *Client) TokenPost(ctx context.Context, request TokenPostReq) (TokenPostRes, error) {
+	res, err := c.sendTokenPost(ctx, request)
 	return res, err
 }
 
-func (c *Client) sendTokenPost(ctx context.Context, params TokenPostParams) (res TokenPostRes, err error) {
+func (c *Client) sendTokenPost(ctx context.Context, request TokenPostReq) (res TokenPostRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		semconv.HTTPRequestMethodKey.String("POST"),
 		semconv.HTTPRouteKey.String("/token"),
@@ -510,73 +510,13 @@ func (c *Client) sendTokenPost(ctx context.Context, params TokenPostParams) (res
 	pathParts[0] = "/token"
 	uri.AddPathParts(u, pathParts[:]...)
 
-	stage = "EncodeQueryParams"
-	q := uri.NewQueryEncoder()
-	{
-		// Encode "grant_type" parameter.
-		cfg := uri.QueryParameterEncodingConfig{
-			Name:    "grant_type",
-			Style:   uri.QueryStyleForm,
-			Explode: true,
-		}
-
-		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
-			if val, ok := params.GrantType.Get(); ok {
-				return e.EncodeValue(conv.StringToString(val))
-			}
-			return nil
-		}); err != nil {
-			return res, errors.Wrap(err, "encode query")
-		}
-	}
-	{
-		// Encode "client_id" parameter.
-		cfg := uri.QueryParameterEncodingConfig{
-			Name:    "client_id",
-			Style:   uri.QueryStyleForm,
-			Explode: true,
-		}
-
-		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
-			return e.EncodeValue(conv.StringToString(params.ClientID))
-		}); err != nil {
-			return res, errors.Wrap(err, "encode query")
-		}
-	}
-	{
-		// Encode "code" parameter.
-		cfg := uri.QueryParameterEncodingConfig{
-			Name:    "code",
-			Style:   uri.QueryStyleForm,
-			Explode: true,
-		}
-
-		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
-			return e.EncodeValue(conv.StringToString(params.Code))
-		}); err != nil {
-			return res, errors.Wrap(err, "encode query")
-		}
-	}
-	{
-		// Encode "redirect_uri" parameter.
-		cfg := uri.QueryParameterEncodingConfig{
-			Name:    "redirect_uri",
-			Style:   uri.QueryStyleForm,
-			Explode: true,
-		}
-
-		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
-			return e.EncodeValue(conv.StringToString(params.RedirectURI))
-		}); err != nil {
-			return res, errors.Wrap(err, "encode query")
-		}
-	}
-	u.RawQuery = q.Values().Encode()
-
 	stage = "EncodeRequest"
 	r, err := ht.NewRequest(ctx, "POST", u)
 	if err != nil {
 		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeTokenPostRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
 	}
 
 	stage = "SendRequest"

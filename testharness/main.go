@@ -24,6 +24,7 @@ func main() {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	datastore := servicedao.NewMemoryDao()
+	// datastore := servicedao.NewFilesystemDao()
 
 	// run a the application, with access to the underlying datastore
 	// appPort := "8080"

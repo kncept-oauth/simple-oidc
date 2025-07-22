@@ -6,9 +6,11 @@ import (
 	"html/template"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 
+	"github.com/kncept-oauth/simple-oidc/service/client"
 	"github.com/kncept-oauth/simple-oidc/service/dao"
 	"github.com/kncept-oauth/simple-oidc/service/jwtutil"
 	"github.com/kncept-oauth/simple-oidc/service/keys"
@@ -83,7 +85,7 @@ func (obj *acceptOidcHandler) userClaims(req *http.Request) *session.AuthTokenJw
 
 func (obj *acceptOidcHandler) confirmLogin() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-
+		ctx := req.Context()
 		soCurrentParams := ""
 		soCurrentCookie, _ := req.Cookie(CurrentOperationParamsCookieName)
 		if soCurrentCookie != nil {
@@ -128,16 +130,37 @@ func (obj *acceptOidcHandler) confirmLogin() http.HandlerFunc {
 			// res.WriteHeader(302)
 			return
 		}
+		authCodeStore := obj.daoSource.GetAuthorizationCodeStore()
+		authCode, err := client.NewAuthorizationCode(userId, soCurrent.ToQueryParams())
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			res.WriteHeader(500)
+			return
+		}
+		err = authCodeStore.SaveAuthorizationCode(ctx, authCode)
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			res.WriteHeader(500)
+			return
+		}
+		code := authCode.Code
+		state := soCurrent.State
 
-		// DO WHATEVER STATE WE NEED TO HERE
-		// need to poke some values BACK HERE!!
+		u, err := url.Parse(soCurrent.RedirectUri)
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			res.WriteHeader(500)
+			return
+		}
+		q := u.Query()
+		q.Add("code", code)
+		if state != "" {
+			q.Add("state", state)
+		}
+		u.RawQuery = q.Encode()
 
-		// state := soCurrent.State
-		// code := state saver!!
-
-		res.Header().Add("Location", soCurrent.RedirectUri)
+		res.Header().Add("Location", u.String())
 		res.WriteHeader(302)
-
 	}
 }
 
@@ -199,7 +222,7 @@ func (obj *acceptOidcHandler) acceptLogin() http.HandlerFunc {
 				obj.respondWithTemplate("accept_authenticated.html", 200, res, acceptPageParams)
 				return
 			}
-			// handle POST action (logout of account, )
+			// handle POST action (logout of account, etc)
 		} else {
 			if req.Method == http.MethodGet {
 				obj.respondWithTemplate("accept_unauthenticated.html", 200, res, acceptPageParams)

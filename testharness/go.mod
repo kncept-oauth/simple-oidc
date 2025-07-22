@@ -5,13 +5,15 @@ go 1.23.0
 toolchain go1.23.4
 
 replace github.com/kncept-oauth/simple-oidc/service => ../service
+// replace github.com/kncept/fiber-oidc => ../../fiber-oidc
 
 require (
 	github.com/gofiber/fiber/v2 v2.52.8
 	github.com/gofiber/template/html/v2 v2.1.3
 	github.com/google/uuid v1.6.0
 	github.com/kncept-oauth/simple-oidc/service v0.0.0-00010101000000-000000000000
-	github.com/kncept/fiber-oidc v1.0.2
+	github.com/kncept/fiber-oidc v1.0.4
+
 )
 
 require (
@@ -36,6 +38,7 @@ require (
 	github.com/ogen-go/ogen v1.8.1 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
+	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.64.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect

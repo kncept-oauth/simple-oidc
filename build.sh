@@ -7,7 +7,11 @@ clean() {
 
 prepare() {
   cd service 
+  go mod tidy
   go generate gen/gen.go
+  cd ..
+  cd testharness
+  go mod tidy
   cd ..
 }
 
@@ -18,11 +22,6 @@ build() {
     go generate gen/gen.go  
     cd ..
 }
-
-mod() {
-    echo go mod
-}
-
 testharness() {
     cd testharness && go run main.go
 }

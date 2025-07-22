@@ -18,7 +18,7 @@ const LoginJwtCookieName = "so-jwt"
 const LoginRefreshTokenCookieName = "so-ts"
 
 func NewApplication(daoSource dao.DaoSource, urlPrefix string) (http.HandlerFunc, error) {
-	// fmt.Printf("NewApplication: %v\n", urlPrefix)
+	urlPrefix = strings.TrimSuffix(urlPrefix, "/")
 	serveMux := http.NewServeMux()
 
 	acceptOidcHandler := acceptOidcHandler{
@@ -39,11 +39,12 @@ func NewApplication(daoSource dao.DaoSource, urlPrefix string) (http.HandlerFunc
 	server, err := api.NewServer(
 		&oapiDispatcher{
 			authorizationHandler: authorizationHandler{
-				store: daoSource.GetClientStore(),
+				DaoSource: daoSource,
+				Issuer:    urlPrefix,
 			},
 			wellKnownHandler: wellKnownHandler{
 				DaoSource: daoSource,
-				Issuer:    strings.TrimSuffix(urlPrefix, "/"),
+				Issuer:    urlPrefix,
 			},
 		},
 		&dispatcherauth.Handler{},

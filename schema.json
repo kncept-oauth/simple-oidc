@@ -120,7 +120,9 @@
                 ],
                 "security": [
                     {},
-                    {"LoginCookie": []}
+                    {
+                        "LoginCookie": []
+                    }
                 ],
                 "responses": {
                     "200": {
@@ -168,41 +170,22 @@
             "x-ogen-operation-group": "Authorization",
             "post": {
                 "description": "Token Exchange Endpoint",
-                "parameters": [  
-                    {
-                        "in": "query",
-                        "name": "grant_type",
-                        "required": false,
-                        "schema": {
-                            "type": "string"
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TokenRequestBody"
+                            }
                         },
-                        "description" : "is this required or not?"
-                    },
-                    {
-                        "in": "query",
-                        "name": "client_id",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "in": "query",
-                        "name": "code",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "in": "query",
-                        "name": "redirect_uri",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TokenRequestBody"
+                            }
                         }
                     }
-                ],
+                },
+                "parameters": [],
                 "responses": {
                     "200": {
                         "description": "Successful code exchange",
@@ -335,6 +318,30 @@
                         "type": "string"
                     },
                     "e": {
+                        "nullable": false,
+                        "type": "string"
+                    }
+                }
+            },
+            "TokenRequestBody": {
+                "type": "object",
+                "required":[
+                    "code"
+                ],
+                "properties": {
+                    "code": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "grant_type": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "client_id": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "redirect_uri": {
                         "nullable": false,
                         "type": "string"
                     }

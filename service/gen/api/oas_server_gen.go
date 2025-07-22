@@ -31,7 +31,7 @@ type AuthorizationHandler interface {
 	// Token Exchange Endpoint.
 	//
 	// POST /token
-	TokenPost(ctx context.Context, params TokenPostParams) (TokenPostRes, error)
+	TokenPost(ctx context.Context, req TokenPostReq) (TokenPostRes, error)
 }
 
 // WellKnownHandler handles operations described by OpenAPI v3 specification.

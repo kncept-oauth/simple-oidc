@@ -7,22 +7,76 @@ import (
 	"log"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/kncept-oauth/simple-oidc/service/client"
+	"github.com/kncept-oauth/simple-oidc/service/dao"
 	"github.com/kncept-oauth/simple-oidc/service/dispatcherauth"
 	"github.com/kncept-oauth/simple-oidc/service/gen/api"
+	"github.com/kncept-oauth/simple-oidc/service/jwtutil"
+	"github.com/kncept-oauth/simple-oidc/service/keys"
+	"github.com/kncept-oauth/simple-oidc/service/params"
 )
 
 type authorizationHandler struct {
-	store client.ClientStore
+	DaoSource dao.DaoSource
+	Issuer    string
 }
 
-func (obj *authorizationHandler) TokenPost(ctx context.Context, params api.TokenPostParams) (api.TokenPostRes, error) {
-	return nil, errors.ErrUnsupported
-}
+// TokenPost implements api.AuthorizationHandler.
+func (obj *authorizationHandler) TokenPost(ctx context.Context, req api.TokenPostReq) (api.TokenPostRes, error) {
+	var tokenRequestBody *api.TokenRequestBody
 
+	if jsonReq, ok := req.(*api.TokenPostApplicationJSON); ok {
+		tokenRequestBody = (*api.TokenRequestBody)(jsonReq)
+	}
+	if formReq, ok := req.(*api.TokenPostApplicationXWwwFormUrlencoded); ok {
+		tokenRequestBody = (*api.TokenRequestBody)(formReq)
+	}
+	if tokenRequestBody == nil {
+		return nil, errors.New("unable to parse request body")
+	}
+
+	authCode, err := obj.DaoSource.GetAuthorizationCodeStore().GetAuthorizationCode(ctx, tokenRequestBody.Code)
+	if err != nil {
+		return nil, err
+	}
+
+	// obj.DaoSource.GetAuthorizationCodeStore().DeleteAuthorizationCode(ctx, tokenRequestBody.Code)
+	acParams, err := params.OidcParamsFromQuery(authCode.OidcParams)
+	if err != nil {
+		return nil, err
+	}
+
+	keyPair, err := keys.GetCurrentKey(obj.DaoSource.GetKeyStore())
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now().UTC().Truncate(time.Second)
+	claims := &jwtutil.IdClaimsJwt{
+		Iss: obj.Issuer,
+		Sub: authCode.UserId,
+		Aud: acParams.ClientId, // TODO: use client configuration for audiences here
+		Nbf: now.Unix(),
+		Iat: now.Unix(),
+		Exp: now.Add(time.Hour * 3).Unix(),
+	}
+	jwt, err := jwtutil.ClaimsToJwt(claims, keyPair.Kid, keyPair.Rsa)
+	if err != nil {
+		return nil, err
+	}
+
+	loginTokens := &api.LoginTokens{
+		IDToken:     jwt,
+		AccessToken: jwt,
+		// RefreshToken: "refresh",
+	}
+
+	return loginTokens, nil
+}
 func (obj authorizationHandler) AuthorizeGet(ctx context.Context, params api.AuthorizeGetParams) (api.AuthorizeGetRes, error) {
-	client, err := obj.store.GetClient(ctx, params.ClientID)
+	client, err := obj.DaoSource.GetClientStore().GetClient(ctx, params.ClientID)
 	if err != nil {
 		return nil, err
 	}

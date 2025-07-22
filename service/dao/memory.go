@@ -17,10 +17,7 @@ type MemoryDao struct {
 	users                sync.Map
 	sessions             sync.Map
 	clientAuthorizations sync.Map
-}
-
-func (obj *MemoryDao) GetKeyStore() keys.Keystore {
-	return obj
+	authorizationCodes   sync.Map
 }
 
 func NewMemoryDao() DaoSource {
@@ -43,7 +40,14 @@ func (obj *MemoryDao) GetClientAuthorizationStore() client.ClientAuthorizationSt
 	return obj
 }
 
-// GetKey implements keys.Keystore.
+func (obj *MemoryDao) GetKeyStore() keys.Keystore {
+	return obj
+}
+
+func (obj *MemoryDao) GetAuthorizationCodeStore() client.AuthorizationCodeStore {
+	return obj
+}
+
 func (obj *MemoryDao) GetKey(kid string) (*keys.JwkKeypair, error) {
 	keypair, ok := obj.keys.Load(kid)
 	if ok {
@@ -52,7 +56,6 @@ func (obj *MemoryDao) GetKey(kid string) (*keys.JwkKeypair, error) {
 	return nil, nil
 }
 
-// SaveKey implements keys.Keystore.
 func (obj *MemoryDao) SaveKey(keypair *keys.JwkKeypair) error {
 	obj.keys.Store(keypair.Kid, keypair)
 	return nil
@@ -67,7 +70,6 @@ func (obj *MemoryDao) ListKeys() ([]string, error) {
 	return keys, nil
 }
 
-// GetClient implements authorizer.ClientStore.
 func (obj *MemoryDao) GetClient(ctx context.Context, clientId string) (*client.Client, error) {
 	c, ok := obj.clients.Load(clientId)
 	if ok {
@@ -76,7 +78,6 @@ func (obj *MemoryDao) GetClient(ctx context.Context, clientId string) (*client.C
 	return nil, nil
 }
 
-// Save implements authorizer.ClientStore.
 func (obj *MemoryDao) SaveClient(ctx context.Context, c *client.Client) error {
 	existing, err := obj.GetClient(ctx, c.ClientId)
 	if err != nil {
@@ -173,4 +174,16 @@ func (obj *MemoryDao) GetClientAuthorization(clientId string, userId string) (*c
 		return true
 	})
 	return found, nil
+}
+
+// GetAuthorizationCode implements client.AuthorizationCodeStore.
+func (obj *MemoryDao) GetAuthorizationCode(ctx context.Context, code string) (*client.AuthorizationCode, error) {
+	c, _ := obj.clientAuthorizations.Load(code)
+	return c.(*client.AuthorizationCode), nil
+}
+
+// SaveAuthorizationCode implements client.AuthorizationCodeStore.
+func (obj *MemoryDao) SaveAuthorizationCode(ctx context.Context, code *client.AuthorizationCode) error {
+	obj.clientAuthorizations.Store(code.Code, code)
+	return nil
 }

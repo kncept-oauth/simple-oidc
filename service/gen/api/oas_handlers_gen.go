@@ -578,16 +578,21 @@ func (s *Server) handleTokenPostRequest(args [0]string, argsEscaped bool, w http
 			ID:   "",
 		}
 	)
-	params, err := decodeTokenPostParams(args, argsEscaped, r)
+	request, close, err := s.decodeTokenPostRequest(r)
 	if err != nil {
-		err = &ogenerrors.DecodeParamsError{
+		err = &ogenerrors.DecodeRequestError{
 			OperationContext: opErrContext,
 			Err:              err,
 		}
-		defer recordError("DecodeParams", err)
+		defer recordError("DecodeRequest", err)
 		s.cfg.ErrorHandler(ctx, w, r, err)
 		return
 	}
+	defer func() {
+		if err := close(); err != nil {
+			recordError("CloseRequest", err)
+		}
+	}()
 
 	var response TokenPostRes
 	if m := s.cfg.Middleware; m != nil {
@@ -596,31 +601,14 @@ func (s *Server) handleTokenPostRequest(args [0]string, argsEscaped bool, w http
 			OperationName:    TokenPostOperation,
 			OperationSummary: "",
 			OperationID:      "",
-			Body:             nil,
-			Params: middleware.Parameters{
-				{
-					Name: "grant_type",
-					In:   "query",
-				}: params.GrantType,
-				{
-					Name: "client_id",
-					In:   "query",
-				}: params.ClientID,
-				{
-					Name: "code",
-					In:   "query",
-				}: params.Code,
-				{
-					Name: "redirect_uri",
-					In:   "query",
-				}: params.RedirectURI,
-			},
-			Raw: r,
+			Body:             request,
+			Params:           middleware.Parameters{},
+			Raw:              r,
 		}
 
 		type (
-			Request  = struct{}
-			Params   = TokenPostParams
+			Request  = TokenPostReq
+			Params   = struct{}
 			Response = TokenPostRes
 		)
 		response, err = middleware.HookMiddleware[
@@ -630,14 +618,14 @@ func (s *Server) handleTokenPostRequest(args [0]string, argsEscaped bool, w http
 		](
 			m,
 			mreq,
-			unpackTokenPostParams,
+			nil,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.TokenPost(ctx, params)
+				response, err = s.h.TokenPost(ctx, request)
 				return response, err
 			},
 		)
 	} else {
-		response, err = s.h.TokenPost(ctx, params)
+		response, err = s.h.TokenPost(ctx, request)
 	}
 	if err != nil {
 		if errRes, ok := errors.Into[*ErrRespStatusCode](err); ok {
