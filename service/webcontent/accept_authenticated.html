@@ -12,7 +12,10 @@
 
         <br>
         <br>
-        Also, a list of apps that a user is authorized with.
+        {{ range $ca := .ClientAuthorizations }}
+        <pre>{{ $ca }}</pre>
+        {{ end }}
+        
 
         <p><a href="/confirm">Confirm Login</a></p>
     </body>

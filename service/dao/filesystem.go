@@ -3,6 +3,7 @@ package dao
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -24,16 +25,24 @@ func writeJson(rootDir string, id string, val interface{}) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path.Join(rootDir, fmt.Sprintf("%v.json", id)), data, 600)
+	return os.WriteFile(path.Join(rootDir, fmt.Sprintf("%v.json", id)), data, 0600)
 }
-
-func readJson(rootDir string, id string, val interface{}) error {
+func readJson[T interface{}](rootDir string, id string) (*T, error) {
+	val := new(T)
 	data, err := os.ReadFile(path.Join(rootDir, fmt.Sprintf("%v.json", id)))
 	if err != nil {
-		return err
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, err
 	}
-	return json.Unmarshal(data, val)
+	err = json.Unmarshal(data, val)
+	if err != nil {
+		return nil, err
+	}
+	return val, nil
 }
+
 func deleteJson(rootDir string, id string) error {
 	return os.Remove(path.Join(rootDir, fmt.Sprintf("%v.json", id)))
 }
@@ -53,36 +62,42 @@ func listDir(rootDir string) ([]string, error) {
 }
 
 func (obj *FilesystemDao) GetKeyStore() keys.Keystore {
+	os.Mkdir(path.Join(obj.RootDir, "keys"), 0700)
 	return &fsKeyStore{
 		RootDir: path.Join(obj.RootDir, "keys"),
 	}
 }
 
 func (obj *FilesystemDao) GetClientStore() client.ClientStore {
+	os.Mkdir(path.Join(obj.RootDir, "clients"), 0700)
 	return &fsClientStore{
 		RootDir: path.Join(obj.RootDir, "clients"),
 	}
 }
 
 func (obj *FilesystemDao) GetUserStore() users.UserStore {
+	os.Mkdir(path.Join(obj.RootDir, "users"), 0700)
 	return &fsUserStore{
 		RootDir: path.Join(obj.RootDir, "users"),
 	}
 }
 
 func (obj *FilesystemDao) GetSessionStore() session.SessionStore {
+	os.Mkdir(path.Join(obj.RootDir, "session"), 0700)
 	return &fsSessionStore{
 		RootDir: path.Join(obj.RootDir, "session"),
 	}
 }
 
 func (obj *FilesystemDao) GetClientAuthorizationStore() client.ClientAuthorizationStore {
+	os.Mkdir(path.Join(obj.RootDir, "client-authorizations"), 0700)
 	return &clientAuthorizationStore{
 		RootDir: path.Join(obj.RootDir, "client-authorizations"),
 	}
 }
 
 func (obj *FilesystemDao) GetAuthorizationCodeStore() client.AuthorizationCodeStore {
+	os.Mkdir(path.Join(obj.RootDir, "authorization-codes"), 0700)
 	return &authorizationCodeStore{
 		RootDir: path.Join(obj.RootDir, "authorization-codes"),
 	}
@@ -106,6 +121,8 @@ func NewFilesystemDao() DaoSource {
 		panic(err)
 	}
 	workDir = path.Join(workDir, ".data")
+
+	os.Mkdir(workDir, 0700)
 	return &FilesystemDao{
 		RootDir: workDir,
 	}
@@ -141,8 +158,7 @@ func (c *clientAuthorizationStore) All(scroller client.PaginationScroller) error
 		return err
 	}
 	for _, id := range files {
-		obj := &client.ClientAuthorization{}
-		err = readJson(c.RootDir, id, obj)
+		obj, err := readJson[client.ClientAuthorization](c.RootDir, id)
 		if err != nil {
 			return err
 		}
@@ -194,9 +210,8 @@ func (c *clientAuthorizationStore) SaveClientAuthorization(clientAuthorization *
 	return writeJson(c.RootDir, clientAuthorization.AuthorizationSessionId, clientAuthorization)
 }
 
-func (f *fsKeyStore) GetKey(kid string) (val *keys.JwkKeypair, err error) {
-	err = readJson(f.RootDir, kid, val)
-	return
+func (f *fsKeyStore) GetKey(kid string) (*keys.JwkKeypair, error) {
+	return readJson[keys.JwkKeypair](f.RootDir, kid)
 }
 
 func (f *fsKeyStore) SaveKey(keypair *keys.JwkKeypair) error {
@@ -208,9 +223,7 @@ func (f *fsKeyStore) ListKeys() ([]string, error) {
 }
 
 func (c *fsClientStore) GetClient(ctx context.Context, clientId string) (*client.Client, error) {
-	val := &client.Client{}
-	err := readJson(c.RootDir, clientId, val)
-	return val, err
+	return readJson[client.Client](c.RootDir, clientId)
 }
 
 func (c *fsClientStore) SaveClient(ctx context.Context, client *client.Client) error {
@@ -238,9 +251,8 @@ func (c *fsClientStore) RemoveClient(ctx context.Context, clientId string) error
 }
 
 func (c *fsUserStore) GetUser(id string) (*users.OidcUser, error) {
-	usr := &users.OidcUser{}
-	err := readJson(c.RootDir, id, usr)
-	return usr, err
+	return readJson[users.OidcUser](c.RootDir, id)
+
 }
 func (c *fsUserStore) SaveUser(user *users.OidcUser) error {
 	return writeJson(c.RootDir, user.Id, user)
@@ -250,19 +262,13 @@ func (c *fsSessionStore) SaveSession(session *session.Session) error {
 	return writeJson(c.RootDir, session.SessionId, session)
 }
 func (c *fsSessionStore) LoadSession(sessionId string) (*session.Session, error) {
-	ses := &session.Session{}
-	err := readJson(c.RootDir, sessionId, ses)
-	return ses, err
+	return readJson[session.Session](c.RootDir, sessionId)
 }
 
-// GetAuthorizationCode implements client.AuthorizationCodeStore.
 func (a *authorizationCodeStore) GetAuthorizationCode(ctx context.Context, code string) (*client.AuthorizationCode, error) {
-	c := &client.AuthorizationCode{}
-	err := readJson(a.RootDir, code, c)
-	return c, err
+	return readJson[client.AuthorizationCode](a.RootDir, code)
 }
 
-// SaveAuthorizationCode implements client.AuthorizationCodeStore.
 func (a *authorizationCodeStore) SaveAuthorizationCode(ctx context.Context, code *client.AuthorizationCode) error {
 	return writeJson(a.RootDir, code.Code, code)
 }

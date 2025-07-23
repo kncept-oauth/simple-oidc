@@ -37,28 +37,22 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 		},
 	)
 
-	// most basic client
-	c := &client.Client{
-		ClientId: staticClientId,
-		AllowedRedirectUris: []string{
-			"https://localhost:3000/oauth2/callback",
-		},
-		// Audiences: []string{
-		// 	"https://localhost:3000/",
-		// },
+	staticClient, err := daoSource.GetClientStore().GetClient(ctx, staticClientId)
+	if err != nil {
+		panic(err)
 	}
-	daoSource.GetClientStore().SaveClient(ctx, c)
-
-	// c = &client.Client{
-	// 	ClientId: uuid.NewString(),
-	// 	AllowedRedirectUris: []string{
-	// 		"https://localhost:3000/oauth2/callback",
-	// 	},
-	// 	Audiences: []string{
-	// 		"https://localhost:3000/",
-	// 	},
-	// }
-	// daoSource.GetClientStore().SaveClient(c)
+	if staticClient == nil {
+		staticClient = &client.Client{
+			ClientId: staticClientId,
+			AllowedRedirectUris: []string{
+				"https://localhost:3000/oauth2/callback",
+			},
+			// Audiences: []string{
+			// 	"https://localhost:3000/",
+			// },
+		}
+		daoSource.GetClientStore().SaveClient(ctx, staticClient)
+	}
 
 	fiberOidcConfig := &fiberoidc.Config{
 		Issuer:         "https://localhost:8443",

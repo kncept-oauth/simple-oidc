@@ -9,7 +9,9 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/kncept-oauth/simple-oidc/service/client"
 	"github.com/kncept-oauth/simple-oidc/service/dao"
 	"github.com/kncept-oauth/simple-oidc/service/jwtutil"
@@ -83,6 +85,98 @@ func (obj *acceptOidcHandler) userClaims(req *http.Request) *session.AuthTokenJw
 
 }
 
+// show the 'accept page' so that the user KNOWS where they are going
+func (obj *acceptOidcHandler) acceptLogin() http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+
+		// current auth attempt details
+		// if _anything_ in the query params is different, update
+		// if _anything_ is in the query params, save and redirect back with a clean url path
+		soCurrentParams := ""
+		soCurrentCookie, _ := req.Cookie(CurrentOperationParamsCookieName)
+		if soCurrentCookie != nil {
+			soCurrentParams = soCurrentCookie.Value
+		}
+		soCurrent, err := params.OidcParamsFromQuery(soCurrentParams)
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			res.WriteHeader(500)
+			return
+		}
+
+		stateMap := params.QueryParamsToMap(req.URL)
+		if len(stateMap) != 0 {
+			updatedOidcParams := params.OidcParamsFromMap(stateMap)
+			soCurrent.Merge(updatedOidcParams)
+
+			soCurrentCookie = &http.Cookie{
+				Name:  CurrentOperationParamsCookieName,
+				Value: soCurrent.ToQueryParams(),
+				// Path:     "/",
+				MaxAge:   15 * 60, // 15 min
+				HttpOnly: true,
+				SameSite: http.SameSiteDefaultMode,
+			}
+			http.SetCookie(res, soCurrentCookie)
+			res.Header().Add("Location", "/accept")
+			res.WriteHeader(302)
+			return
+		}
+
+		if !soCurrent.IsValid() {
+			// TODO: Send to an 'invalid state' page (unrecoverable)
+			res.WriteHeader(400)
+			return
+		}
+
+		type accept_page_params struct {
+			Params                       params.OidcAuthCodeFlowParams
+			NewAuthorization             bool
+			NumberOfClientAuthorizations int
+			ClientAuthorizations         []*client.ClientAuthorization
+		}
+
+		acceptPageParams := accept_page_params{
+			Params: *soCurrent,
+		}
+
+		userId := obj.userId(req)
+		if userId != "" {
+			if req.Method == http.MethodGet {
+
+				clientAuthorizations := &client.DepaginatedScroller{}
+				err := obj.daoSource.GetClientAuthorizationStore().ClientAuthorizationsByUser(userId, clientAuthorizations.Scroller)
+				if err != nil {
+					fmt.Printf("%v\n", err)
+					res.WriteHeader(500)
+					return
+				}
+				acceptPageParams.ClientAuthorizations = clientAuthorizations.Results
+				acceptPageParams.NumberOfClientAuthorizations = len(clientAuthorizations.Results)
+				newAuthorization := true
+				for _, existingAuth := range clientAuthorizations.Results {
+					if existingAuth.ClientId == soCurrent.ClientId {
+						newAuthorization = false
+					}
+				}
+				acceptPageParams.NewAuthorization = newAuthorization
+
+				obj.respondWithTemplate("accept_authenticated.html", 200, res, acceptPageParams)
+				return
+			}
+			// handle POST action (logout of account, etc)
+		} else {
+			if req.Method == http.MethodGet {
+				obj.respondWithTemplate("accept_unauthenticated.html", 200, res, acceptPageParams)
+				return
+			}
+		}
+
+		res.WriteHeader(500)
+	}
+}
+
+// click 'confirm' ==> redirect back to app
 func (obj *acceptOidcHandler) confirmLogin() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
@@ -130,6 +224,36 @@ func (obj *acceptOidcHandler) confirmLogin() http.HandlerFunc {
 			// res.WriteHeader(302)
 			return
 		}
+
+		clientAuthorizations := &client.DepaginatedScroller{}
+		err = obj.daoSource.GetClientAuthorizationStore().ClientAuthorizationsByUser(userId, clientAuthorizations.Scroller)
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			res.WriteHeader(500)
+			return
+		}
+		newAuthorization := true
+		for _, existingAuth := range clientAuthorizations.Results {
+			if existingAuth.ClientId == soCurrent.ClientId {
+				newAuthorization = false
+			}
+		}
+		now := time.Now().UTC()
+		if newAuthorization {
+			err = obj.daoSource.GetClientAuthorizationStore().SaveClientAuthorization(&client.ClientAuthorization{
+				ClientId:               soCurrent.ClientId,
+				UserId:                 userId,
+				AuthorizedAt:           now,
+				LastRefreshedAt:        now,
+				AuthorizationSessionId: uuid.NewString(),
+			})
+			if err != nil {
+				fmt.Printf("%v\n", err)
+				res.WriteHeader(500)
+				return
+			}
+		}
+
 		authCodeStore := obj.daoSource.GetAuthorizationCodeStore()
 		authCode, err := client.NewAuthorizationCode(userId, soCurrent.ToQueryParams())
 		if err != nil {
@@ -161,76 +285,6 @@ func (obj *acceptOidcHandler) confirmLogin() http.HandlerFunc {
 
 		res.Header().Add("Location", u.String())
 		res.WriteHeader(302)
-	}
-}
-
-func (obj *acceptOidcHandler) acceptLogin() http.HandlerFunc {
-	return func(res http.ResponseWriter, req *http.Request) {
-
-		// current auth attempt details
-		// if _anything_ in the query params is different, update
-		// if _anything_ is in the query params, save and redirect back with a clean url path
-		soCurrentParams := ""
-		soCurrentCookie, _ := req.Cookie(CurrentOperationParamsCookieName)
-		if soCurrentCookie != nil {
-			soCurrentParams = soCurrentCookie.Value
-		}
-		soCurrent, err := params.OidcParamsFromQuery(soCurrentParams)
-		if err != nil {
-			fmt.Printf("%v\n", err)
-			res.WriteHeader(500)
-			return
-		}
-
-		stateMap := params.QueryParamsToMap(req.URL)
-		if len(stateMap) != 0 {
-			updatedOidcParams := params.OidcParamsFromMap(stateMap)
-			soCurrent.Merge(updatedOidcParams)
-
-			soCurrentCookie = &http.Cookie{
-				Name:  CurrentOperationParamsCookieName,
-				Value: soCurrent.ToQueryParams(),
-				// Path:     "/",
-				MaxAge:   15 * 60, // 15 min
-				HttpOnly: true,
-				SameSite: http.SameSiteDefaultMode,
-			}
-			http.SetCookie(res, soCurrentCookie)
-			res.Header().Add("Location", "/accept")
-			res.WriteHeader(302)
-			return
-		}
-
-		if !soCurrent.IsValid() {
-			// TODO: Send to an 'invalid state' page (unrecoverable)
-			res.WriteHeader(400)
-			return
-		}
-
-		type accept_page_params struct {
-			Params params.OidcAuthCodeFlowParams
-		}
-
-		acceptPageParams := accept_page_params{
-			Params: *soCurrent,
-		}
-
-		userId := obj.userId(req)
-		if userId != "" {
-			if req.Method == http.MethodGet {
-
-				obj.respondWithTemplate("accept_authenticated.html", 200, res, acceptPageParams)
-				return
-			}
-			// handle POST action (logout of account, etc)
-		} else {
-			if req.Method == http.MethodGet {
-				obj.respondWithTemplate("accept_unauthenticated.html", 200, res, acceptPageParams)
-				return
-			}
-		}
-
-		res.WriteHeader(500)
 	}
 }
 
