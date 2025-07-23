@@ -9,9 +9,19 @@
     <h1>Testharness</h1>
     <div>N.B. Testharness is an inherrently insecure test tool to allow manual play</div>
 
-    <div>Logged In: {{ .LoggedIn }}
+    <div class="outlined">Logged In: {{ .LoggedIn }}
         {{ if .LoggedIn }}
-        Logged into client id: (todo)
+        <div>
+            <ul>
+                <li>Sub: {{ .IdToken.Subject }}</li>
+                <li>Iss: {{ .IdToken.Issuer }}</li>
+                <li>Aud: {{ .IdToken.Audience }}</li>
+            </ul>
+            <form method="post">
+                    <input type="hidden" name="op" value="logout">
+                    <input type="submit" value="Logout">
+                </form>
+        </div>
         {{ end }}
     </div>
 

@@ -92,7 +92,7 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 			bind["LoggedIn"] = false
 		} else {
 			bind["LoggedIn"] = true
-			bind["IdToken"] = fmt.Sprintf("%+v", idToken)
+			bind["IdToken"] = idToken
 		}
 		return c.Render("index", bind)
 	})
@@ -129,6 +129,11 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 			if err != nil {
 				return err
 			}
+		case "logout":
+			c.Cookie(&fiber.Cookie{
+				Name:  fiberOidcConfig.AuthCookieName,
+				Value: "",
+			})
 		}
 
 		// dynamically pull form type & details to perform operation

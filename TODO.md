@@ -1,5 +1,5 @@
-accept_unauthenticated.html
-then Login function
+
+LIST OF CLIENT AUTHORIZATION
 
 
 //////
