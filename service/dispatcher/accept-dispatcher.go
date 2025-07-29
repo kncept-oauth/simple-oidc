@@ -34,10 +34,38 @@ func (obj *acceptOidcHandler) myAccountHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		claims := obj.userClaims(req)
 		if claims == nil {
-			res.Header().Add("Location", "/accept")
+			res.Header().Add("Location", "/login")
 			res.WriteHeader(302)
+			return
 		}
-		obj.respondWithTemplate("account.html", 200, res, params.QueryParamsToMap(req.URL))
+
+		userId := claims.Sub
+
+		user, err := obj.daoSource.GetUserStore().GetUser(userId)
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			res.WriteHeader(500)
+		}
+
+		clientAuthorizations := &client.DepaginatedScroller{}
+		err = obj.daoSource.GetClientAuthorizationStore().ClientAuthorizationsByUser(userId, clientAuthorizations.Scroller)
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			res.WriteHeader(500)
+			return
+		}
+
+		type account_page_params struct {
+			User                 *users.OidcUser
+			ClientAuthorizations []*client.ClientAuthorization
+		}
+
+		params := account_page_params{
+			User:                 user,
+			ClientAuthorizations: clientAuthorizations.Results,
+		}
+
+		obj.respondWithTemplate("account.html", 200, res, params)
 	}
 }
 
@@ -131,10 +159,9 @@ func (obj *acceptOidcHandler) acceptLogin() http.HandlerFunc {
 		}
 
 		type accept_page_params struct {
-			Params                       params.OidcAuthCodeFlowParams
-			NewAuthorization             bool
-			NumberOfClientAuthorizations int
-			ClientAuthorizations         []*client.ClientAuthorization
+			Params                params.OidcAuthCodeFlowParams
+			ExistingAuthorization *client.ClientAuthorization
+			ClientAuthorizations  []*client.ClientAuthorization
 		}
 
 		acceptPageParams := accept_page_params{
@@ -145,23 +172,23 @@ func (obj *acceptOidcHandler) acceptLogin() http.HandlerFunc {
 		if userId != "" {
 			if req.Method == http.MethodGet {
 
-				clientAuthorizations := &client.DepaginatedScroller{}
-				err := obj.daoSource.GetClientAuthorizationStore().ClientAuthorizationsByUser(userId, clientAuthorizations.Scroller)
+				clientAuthorizationsScroller := &client.DepaginatedScroller{}
+				err := obj.daoSource.GetClientAuthorizationStore().ClientAuthorizationsByUser(userId, clientAuthorizationsScroller.Scroller)
 				if err != nil {
 					fmt.Printf("%v\n", err)
 					res.WriteHeader(500)
 					return
 				}
-				acceptPageParams.ClientAuthorizations = clientAuthorizations.Results
-				acceptPageParams.NumberOfClientAuthorizations = len(clientAuthorizations.Results)
-				newAuthorization := true
-				for _, existingAuth := range clientAuthorizations.Results {
+				clientAuthorizations := make([]*client.ClientAuthorization, 0, len(clientAuthorizationsScroller.Results))
+				acceptPageParams.ClientAuthorizations = clientAuthorizationsScroller.Results
+				for _, existingAuth := range clientAuthorizationsScroller.Results {
 					if existingAuth.ClientId == soCurrent.ClientId {
-						newAuthorization = false
+						acceptPageParams.ExistingAuthorization = existingAuth
+					} else {
+						clientAuthorizations = append(clientAuthorizations, existingAuth)
 					}
 				}
-				acceptPageParams.NewAuthorization = newAuthorization
-
+				acceptPageParams.ClientAuthorizations = clientAuthorizations
 				obj.respondWithTemplate("accept_authenticated.html", 200, res, acceptPageParams)
 				return
 			}
@@ -320,6 +347,47 @@ func (obj *acceptOidcHandler) templates() *template.Template {
 			}
 			return ""
 		},
+
+		"time": func(args ...any) string {
+			if len(args) == 0 {
+				return ""
+			}
+			if t, ok := args[0].(time.Time); ok {
+				if len(args) == 1 {
+					return t.String()
+				}
+				if args[1] == "since" {
+					duration := time.Since(t)
+
+					seconds := int(duration.Seconds())
+					if seconds < 60 {
+						return fmt.Sprintf("%d seconds ago", seconds)
+					}
+
+					minutes := int(duration.Minutes())
+					if minutes < 60 {
+						return fmt.Sprintf("%d minutes ago", minutes)
+					}
+
+					hours := int(duration.Hours())
+					if hours < 24 {
+						return fmt.Sprintf("%d hours ago", hours)
+					}
+
+					days := int(hours / 24)
+					if days < 30 {
+						return fmt.Sprintf("%d days ago", days)
+					}
+
+					return fmt.Sprintf("%d months ago", int(days/30))
+
+				}
+				panic("unknown use of time function")
+			} else {
+				return ""
+			}
+
+		},
 	}
 	templ = templ.Funcs(f)
 	templ, err := templ.ParseFS(webcontent.Fs, "*.html", "snippet/*.snippet")
@@ -367,7 +435,6 @@ func (obj *acceptOidcHandler) respondWithStaticFile(filename string, contentType
 		}
 		res.WriteHeader(http.StatusInternalServerError)
 	}
-
 }
 
 func (obj *acceptOidcHandler) createUserSession(res http.ResponseWriter, user *users.OidcUser) {

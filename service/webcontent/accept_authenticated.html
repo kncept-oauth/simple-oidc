@@ -1,22 +1,41 @@
 <html>
-    {{ template "header.snippet" (Wrap "Title" "Simple OIDC") }}
-    <body>
-        <h1>Simple OIDC</h1>
-        
-        Client id is: {{.Params.ClientId}}
+{{ template "header.snippet" (Wrap "Title" "Simple OIDC") }}
 
-        <br>
+<body>
+    <h1>Simple OIDC</h1>
 
-        (authenticated accept screen)
-        {{ template "accept_summary.snippet" .Params }}
+    {{/*
+    Client id is: {{.Params.ClientId}} <br/>
+    */}}
 
-        <br>
-        <br>
+    {{ if .ExistingAuthorization }}
+    <p>You have already logged into this provider before</p>
+    {{ template "client_authorization_summary.snippet" .ExistingAuthorization }}
+    {{ else }}
+    <p>This is the first time logging into this provider</p>
+    {{ end }}
+    <br>
+
+    (authenticated accept screen)
+    {{ template "accept_summary.snippet" .Params }}
+
+    <br>
+    {{/*
+    <div class="ClientAuthorizations">
+        {{ if gt (len .ClientAuthorizations) 0 }}
+        <p>You are currently authorized with the following other clients</p>
         {{ range $ca := .ClientAuthorizations }}
-        <pre>{{ $ca }}</pre>
+        {{ template "client_authorization_summary.snippet" $ca }}
+        <br />
         {{ end }}
-        
+        {{ else }}
+        <p>You are not currently authorized with any other clients</p>
+        {{ end }}
+    </div>
+    */}}
 
-        <p><a href="/confirm">Confirm Login</a></p>
-    </body>
+
+    <p><a href="/confirm">Confirm Login</a></p>
+</body>
+
 </html>
