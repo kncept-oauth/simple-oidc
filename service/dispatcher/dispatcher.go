@@ -11,10 +11,10 @@ import (
 	"github.com/kncept-oauth/simple-oidc/service/gen/api"
 )
 
-const CurrentOperationParamsCookieName = "so-current"
+const CurrentOperationParamsCookieName = "so-cp"
 const CurrentOperationNameCookieName = "so-op"
 
-const LoginJwtCookieName = "so-jwt"
+const LoginJwtCookieName = "so-jwt" // contains the jwt
 const LoginRefreshTokenCookieName = "so-ts"
 
 func NewApplication(daoSource dao.DaoSource, urlPrefix string) (http.HandlerFunc, error) {
@@ -33,7 +33,9 @@ func NewApplication(daoSource dao.DaoSource, urlPrefix string) (http.HandlerFunc
 	serveMux.Handle("/register", acceptOidcHandler.registerHandler())
 	serveMux.Handle("/me", acceptOidcHandler.myAccountHandler()) // TODO: Redirect to /account (or /login)
 	serveMux.Handle("/account", acceptOidcHandler.myAccountHandler())
-	serveMux.Handle("/style.css", acceptOidcHandler.respondWithStaticFile("style.css", "text/css", 200))
+	// serveMux.Handle("/style.css", acceptOidcHandler.respondWithStaticFile("style.css", "text/css", 200))
+	// serveMux.Handle("/htmx.js", acceptOidcHandler.respondWithStaticFile("htmx.js", "application/javascript", 200))
+	// serveMux.Handle("/header.js", acceptOidcHandler.respondWithStaticFile("header.js", "application/javascript", 200))
 	serveMux.Handle("/confirm", acceptOidcHandler.confirmLogin())
 
 	server, err := api.NewServer(
@@ -49,6 +51,16 @@ func NewApplication(daoSource dao.DaoSource, urlPrefix string) (http.HandlerFunc
 		},
 		&dispatcherauth.Handler{},
 		api.WithNotFound(func(w http.ResponseWriter, r *http.Request) {
+
+			if strings.HasSuffix(r.URL.Path, ".js") {
+				acceptOidcHandler.respondWithStaticFile(r.URL.Path, "application/javascript", 200)(w, r)
+				return
+			}
+			if strings.HasSuffix(r.URL.Path, ".css") {
+				acceptOidcHandler.respondWithStaticFile(r.URL.Path, "test/css", 200)(w, r)
+				return
+			}
+
 			if r.URL.Path == "/" {
 				acceptOidcHandler.respondWithTemplate("index.html", 200, w, nil)
 			} else {

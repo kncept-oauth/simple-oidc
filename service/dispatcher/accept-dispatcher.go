@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -344,7 +345,11 @@ func (obj *acceptOidcHandler) respondWithTemplate(filename string, statusCode in
 
 func (obj *acceptOidcHandler) respondWithStaticFile(filename string, contentType string, statusCode int) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		file, err := webcontent.Fs.Open(filename)
+		if !strings.HasPrefix(filename, "/") || strings.Contains(filename, "..") {
+			res.WriteHeader(http.StatusNotFound)
+			return
+		}
+		file, err := webcontent.Fs.Open(fmt.Sprintf("static%v", filename))
 		if err == nil {
 			fileContent, err := io.ReadAll(file)
 			if err == nil {
@@ -356,7 +361,11 @@ func (obj *acceptOidcHandler) respondWithStaticFile(filename string, contentType
 				return
 			}
 		}
-		res.WriteHeader(500)
+		if errors.Is(err, os.ErrNotExist) {
+			res.WriteHeader(http.StatusNotFound)
+			return
+		}
+		res.WriteHeader(http.StatusInternalServerError)
 	}
 
 }
