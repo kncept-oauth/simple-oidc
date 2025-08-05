@@ -1,5 +1,7 @@
 
-LIST OF CLIENT AUTHORIZATION
+* deauthorize function
+
+* view client details
 
 
 //////
@@ -25,10 +27,6 @@ https://openid.net/specs/openid-connect-core-1_0.html#TokenEndpoint
 
 //////
 //////
-
-accept_authenticated.html
---> Logout function
---> Accept and continue 
 
 /me endpoint
 

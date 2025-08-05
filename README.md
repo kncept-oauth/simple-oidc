@@ -22,8 +22,8 @@ At the moment, dependencies will be excluded (node_modules and golang vendoring)
 2) To provide a application that can easily be swapped out to different storage mechanisms
 
 # Deployment (one touch)
-todo - either golang or typescript... or bash...
-single script
+Ensure that you have the `LAMBDA_HOSTNAME` env property set.
+Run `./build.sh deploy` with valid AWS credentials.
 
 # Deployment 
 1) Ensure your environment is set up
@@ -34,6 +34,9 @@ single script
 # Development
 Run main.go from the testharness project
 `./build.sh testharness`
+
+This project comes with a dev container, as supported by VSCode.
+The provided dockerfiles should provide an adequate development environment.
 
 # Usage or deployed service
 1) start off with an authorize reqeust!

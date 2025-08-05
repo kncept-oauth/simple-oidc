@@ -1,29 +1,43 @@
-// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// For format details, see https://aka.ms/devcontainer.json.
+// For useage details, see https://code.visualstudio.com/docs/devcontainers/containers
 // README at: https://github.com/devcontainers/templates/tree/main/src/go
 {
 	"name": "simple-oidc",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
 	// "image": "mcr.microsoft.com/devcontainers/go:1-1.21-bullseye",
 	"build": {
-		"dockerfile": "ubuntu.Dockerfile"
+		// "dockerfile": "ubuntu.Dockerfile"
+		"dockerfile": "alpine.Dockerfile"
 	},
+	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	"remoteUser": "oidc",
+//	"containerUser": "$USER",
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	"features": {
-		"ghcr.io/devcontainers/features/git:1": {}
+		"ghcr.io/devcontainers/features/git:1": {},
+		//  "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+		//  "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
 	},
+
+  "mounts": [ "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind" ],
+
 	"customizations": {
 		"vscode": {
 			"extensions": [
 				"golang.go",
 				"zxh404.vscode-proto3",
-				"ms-azuretools.vscode-docker"
+				// "ms-azuretools.vscode-docker",
+				// "ms-azuretools.vscode-containers",
 			]
 		}
 	},
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
+	"forwardPorts": [
+		3000,
+		8443,
+	],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
 	// "postCreateCommand": "go version",
@@ -31,7 +45,5 @@
 	// Configure tool-specific properties.
 	// "customizations": {},
 
-	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-	// "remoteUser": "root"
 }
 

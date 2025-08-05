@@ -3,7 +3,7 @@ package client
 import "context"
 
 type Client struct {
-	ClientId string
+	ClientId string // assigned guid
 
 	// can be an empty array (all scopes)
 	AllowedScopes []string
@@ -14,6 +14,10 @@ type Client struct {
 
 	// regex scripts for redirect uris
 	AllowedRedirectUris []string
+
+	PublicName    string
+	PublicWebsite string
+	Description   string
 }
 
 type ClientStore interface {

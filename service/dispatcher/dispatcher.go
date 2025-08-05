@@ -38,6 +38,8 @@ func NewApplication(daoSource dao.DaoSource, urlPrefix string) (http.HandlerFunc
 	// serveMux.Handle("/header.js", acceptOidcHandler.respondWithStaticFile("header.js", "application/javascript", 200))
 	serveMux.Handle("/confirm", acceptOidcHandler.confirmLogin())
 
+	// serveMux.Handle("/deauthorize", acceptOidcHandler.deauthClient())
+
 	server, err := api.NewServer(
 		&oapiDispatcher{
 			authorizationHandler: authorizationHandler{
@@ -62,6 +64,7 @@ func NewApplication(daoSource dao.DaoSource, urlPrefix string) (http.HandlerFunc
 			}
 
 			if r.URL.Path == "/" {
+				// TODO: detect login, and set flag (eg: display login or account details link)
 				acceptOidcHandler.respondWithTemplate("index.html", 200, w, nil)
 			} else {
 				w.WriteHeader(404)

@@ -1,10 +1,9 @@
 module github.com/kncept-oauth/simple-oidc/testharness
 
-go 1.23.0
-
-toolchain go1.23.4
+go 1.24.5
 
 replace github.com/kncept-oauth/simple-oidc/service => ../service
+
 // replace github.com/kncept/fiber-oidc => ../../fiber-oidc
 
 require (
