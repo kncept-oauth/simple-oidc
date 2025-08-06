@@ -3,13 +3,15 @@ package client
 import (
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 func TestAuthcodeCreated(t *testing.T) {
 
 	before := time.Now().Truncate(time.Second)
 
-	authCode, err := NewAuthCodeId("oidc params")
+	authCode, err := NewAuthorizationCode(uuid.NewString(), "oidc params")
 	if err != nil {
 		t.Fatalf("%v\n", err)
 	}

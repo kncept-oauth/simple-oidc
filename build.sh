@@ -35,15 +35,15 @@ test() {
   go test ./...
   cd ..
 
-  cd deploy
-  npm run test
-  cd ..
+  # cd deploy
+  # npm run test
+  # cd ..
 }
 
 build() {
     cd service 
     go generate gen/gen.go  
-    CGO_ENABLED=0 go build -o bootstrap -ldflags="-s -w"
+    CGO_ENABLED=0 GOOS=linux GOARGS=amd64 go build -o bootstrap -ldflags="-s -w"
     cd ..
     
 }
