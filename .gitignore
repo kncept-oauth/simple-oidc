@@ -2,3 +2,6 @@
 deploy/bin/
 service/simple-oidc
 .vscode/
+
+.aws-credentials.properties
+

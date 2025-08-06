@@ -19,20 +19,25 @@ export type HostedZoneInfo = {
 
 export async function matchingHostedZone(lambdaHostname: string): Promise<HostedZoneInfo> {
     const hostedZones = await listDomainNames()
+    // short LONGEST to SHORTEST
     hostedZones.sort((a: HostedZoneInfo, b: HostedZoneInfo) : number => {
-        return a.name.length - b.name.length
+        return b.name.length - a.name.length
     })
     
     for(let i = 0; i < hostedZones.length; i++) {
         const hostedZone = hostedZones[i]
+        if (lambdaHostname.endsWith(`.${hostedZone.name}`)) {
+            return hostedZone
+        }
         console.log(hostedZone)
     }
-
     throw new Error(`No matching hosted zone for ${lambdaHostname}`)
 }
 
 export async function listDomainNames() : Promise<Array<HostedZoneInfo>> {
-    const client = new Route53Client({})
+    const client = new Route53Client({
+        region: "ap-southeast-2"
+    })
     const input: ListHostedZonesRequest = {}
     const command = new ListHostedZonesCommand(input)
     const response = await client.send(command)
