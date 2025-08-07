@@ -23,11 +23,17 @@ func main() {
 		}
 	}
 
+	hostUrl := "https://localhost:8443"
+	hostName := os.Getenv("host_name")
+	if hostName != "" {
+		hostUrl = fmt.Sprintf("https://%s")
+	}
+
 	switch runmode {
 	case "aws-lambda":
-		RunAsLambda(dao.NewDynamoDbDao(), "https://localhost:8443")
+		RunAsLambda(dao.NewDynamoDbDao(), hostUrl)
 	case "dev":
-		development.RunLocally(dao.NewFilesystemDao(), "https://localhost:8443")
+		development.RunLocally(dao.NewFilesystemDao(), hostUrl)
 	default:
 		panic(fmt.Errorf("unknown run mode: %v", runmode))
 	}

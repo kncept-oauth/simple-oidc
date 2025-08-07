@@ -46,26 +46,20 @@ async function init() {
     environment: {
       // no dot . or dash - allowed
 
+      'host_name': lambdaHostname,
+
       'git_hash': process.env.GITHUB_SHA || 'unknown',
       'deploytime': `${new Date()}`,
     },
   })
 
-  const handlerIntegration = new apigateway.LambdaIntegration(fn, {
-    allowTestInvoke: false,
-  })
-
-  const restApi = new apigateway.RestApi(stack, `${name}-restapi`, {
+  const restApi = new apigateway.LambdaRestApi(stack, `${name}-restapi`, {
     restApiName: 'Simple OIDC',
     description: 'Kncept Simple OIDC and Oauth2 Server',
     endpointTypes: [apigateway.EndpointType.REGIONAL],
+    handler: fn,
     minCompressionSize: cdk.Size.bytes(0),
-    // defaultIntegration: handlerIntegration,
   })
-  restApi.root.addProxy({
-    defaultIntegration: handlerIntegration
-  })
-  // restApi.root.addMethod('GET', handlerIntegration, {})
 
   // will match the longest hostname possible
   const hostedZoneInfo = await matchingHostedZone(lambdaHostname)

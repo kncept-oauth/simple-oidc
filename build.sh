@@ -52,8 +52,14 @@ testharness() {
     cd testharness && go run main.go
 }
 
+deploy() {
+  cd deploy
+  npm run cdk deploy
+  cd ..
+}
+
 if [[ $# -eq 0 ]] ; then
-  echo targets: clean prepare test build testharness
+  echo targets: clean prepare test build testharness deploy
   exit 1
 fi
 
@@ -73,6 +79,9 @@ while [[ $# > 0 ]] ; do
       ;;
     testharness)
       (testharness)
+      ;;
+    deploy)
+      (deploy)
       ;;
     *)
       echo Unknown option: $1
