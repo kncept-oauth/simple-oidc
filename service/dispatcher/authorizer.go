@@ -37,7 +37,7 @@ func (obj *authorizationHandler) TokenPost(ctx context.Context, req api.TokenPos
 		return nil, errors.New("unable to parse request body")
 	}
 
-	authCode, err := obj.DaoSource.GetAuthorizationCodeStore().GetAuthorizationCode(ctx, tokenRequestBody.Code)
+	authCode, err := obj.DaoSource.GetAuthorizationCodeStore(ctx).GetAuthorizationCode(ctx, tokenRequestBody.Code)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func (obj *authorizationHandler) TokenPost(ctx context.Context, req api.TokenPos
 		return nil, err
 	}
 
-	keyPair, err := keys.GetCurrentKey(obj.DaoSource.GetKeyStore())
+	keyPair, err := keys.GetCurrentKey(obj.DaoSource.GetKeyStore(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (obj *authorizationHandler) TokenPost(ctx context.Context, req api.TokenPos
 	return loginTokens, nil
 }
 func (obj authorizationHandler) AuthorizeGet(ctx context.Context, params api.AuthorizeGetParams) (api.AuthorizeGetRes, error) {
-	client, err := obj.DaoSource.GetClientStore().GetClient(ctx, params.ClientID)
+	client, err := obj.DaoSource.GetClientStore(ctx).GetClient(ctx, params.ClientID)
 	if err != nil {
 		return nil, err
 	}

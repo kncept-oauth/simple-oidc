@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/kncept-oauth/simple-oidc/service/client"
+	"github.com/kncept-oauth/simple-oidc/service/dao/ddbutil"
 	"github.com/kncept-oauth/simple-oidc/service/keys"
 	"github.com/kncept-oauth/simple-oidc/service/session"
 	"github.com/kncept-oauth/simple-oidc/service/users"
@@ -61,42 +62,42 @@ func listDir(rootDir string) ([]string, error) {
 	return dirs, nil
 }
 
-func (obj *FilesystemDao) GetKeyStore() keys.Keystore {
+func (obj *FilesystemDao) GetKeyStore(ctx context.Context) keys.Keystore {
 	os.Mkdir(path.Join(obj.RootDir, "keys"), 0700)
 	return &fsKeyStore{
 		RootDir: path.Join(obj.RootDir, "keys"),
 	}
 }
 
-func (obj *FilesystemDao) GetClientStore() client.ClientStore {
+func (obj *FilesystemDao) GetClientStore(ctx context.Context) client.ClientStore {
 	os.Mkdir(path.Join(obj.RootDir, "clients"), 0700)
 	return &fsClientStore{
 		RootDir: path.Join(obj.RootDir, "clients"),
 	}
 }
 
-func (obj *FilesystemDao) GetUserStore() users.UserStore {
+func (obj *FilesystemDao) GetUserStore(ctx context.Context) users.UserStore {
 	os.Mkdir(path.Join(obj.RootDir, "users"), 0700)
 	return &fsUserStore{
 		RootDir: path.Join(obj.RootDir, "users"),
 	}
 }
 
-func (obj *FilesystemDao) GetSessionStore() session.SessionStore {
+func (obj *FilesystemDao) GetSessionStore(ctx context.Context) session.SessionStore {
 	os.Mkdir(path.Join(obj.RootDir, "session"), 0700)
 	return &fsSessionStore{
 		RootDir: path.Join(obj.RootDir, "session"),
 	}
 }
 
-func (obj *FilesystemDao) GetClientAuthorizationStore() client.ClientAuthorizationStore {
+func (obj *FilesystemDao) GetClientAuthorizationStore(ctx context.Context) client.ClientAuthorizationStore {
 	os.Mkdir(path.Join(obj.RootDir, "client-authorizations"), 0700)
 	return &clientAuthorizationStore{
 		RootDir: path.Join(obj.RootDir, "client-authorizations"),
 	}
 }
 
-func (obj *FilesystemDao) GetAuthorizationCodeStore() client.AuthorizationCodeStore {
+func (obj *FilesystemDao) GetAuthorizationCodeStore(ctx context.Context) client.AuthorizationCodeStore {
 	os.Mkdir(path.Join(obj.RootDir, "authorization-codes"), 0700)
 	return &authorizationCodeStore{
 		RootDir: path.Join(obj.RootDir, "authorization-codes"),
@@ -152,7 +153,7 @@ type authorizationCodeStore struct {
 	RootDir string
 }
 
-func (c *clientAuthorizationStore) All(scroller client.PaginationScroller) error {
+func (c *clientAuthorizationStore) All(scrollFn func(page []*client.ClientAuthorization) bool) error {
 	files, err := listDir(c.RootDir)
 	if err != nil {
 		return err
@@ -162,7 +163,7 @@ func (c *clientAuthorizationStore) All(scroller client.PaginationScroller) error
 		if err != nil {
 			return err
 		}
-		keepScrolling := scroller([]*client.ClientAuthorization{
+		keepScrolling := scrollFn([]*client.ClientAuthorization{
 			obj,
 		})
 		if !keepScrolling {
@@ -172,42 +173,34 @@ func (c *clientAuthorizationStore) All(scroller client.PaginationScroller) error
 	return nil
 }
 
-func (c *clientAuthorizationStore) ClientAuthorizationsByClient(clientId string, scroller client.PaginationScroller) error {
+func (c *clientAuthorizationStore) ClientAuthorizationsByClient(ctx context.Context, clientId string, scroller ddbutil.SimpleScroller[client.ClientAuthorization]) error {
 	return c.All(func(page []*client.ClientAuthorization) bool {
 		if page[0].ClientId == clientId {
-			scroller(page)
+			scroller.Scroll(page)
 		}
 		return true
 	})
 }
 
-func (c *clientAuthorizationStore) ClientAuthorizationsByUser(userId string, scroller client.PaginationScroller) error {
+func (c *clientAuthorizationStore) ClientAuthorizationsByUser(ctx context.Context, userId string, scroller ddbutil.SimpleScroller[client.ClientAuthorization]) error {
 	return c.All(func(page []*client.ClientAuthorization) bool {
 		if page[0].UserId == userId {
-			scroller(page)
+			scroller.Scroll(page)
 		}
 		return true
 	})
 }
 
-func (c *clientAuthorizationStore) DeleteClientAuthorization(authorizationSessionId string) error {
-	return deleteJson(c.RootDir, authorizationSessionId)
+func (c *clientAuthorizationStore) DeleteClientAuthorization(ctx context.Context, userId string, clientId string) error {
+	return deleteJson(c.RootDir, fmt.Sprintf("%s-%s", userId, clientId))
 }
 
-func (c *clientAuthorizationStore) GetClientAuthorization(clientId string, userId string) (*client.ClientAuthorization, error) {
-	var found *client.ClientAuthorization
-	err := c.All(func(page []*client.ClientAuthorization) bool {
-		if page[0].ClientId == clientId && page[0].UserId == userId {
-			found = page[0]
-			return false
-		}
-		return true
-	})
-	return found, err
+func (c *clientAuthorizationStore) GetClientAuthorization(ctx context.Context, userId string, clientId string) (*client.ClientAuthorization, error) {
+	return readJson[client.ClientAuthorization](c.RootDir, fmt.Sprintf("%s-%s", userId, clientId))
 }
 
-func (c *clientAuthorizationStore) SaveClientAuthorization(clientAuthorization *client.ClientAuthorization) error {
-	return writeJson(c.RootDir, clientAuthorization.AuthorizationSessionId, clientAuthorization)
+func (c *clientAuthorizationStore) SaveClientAuthorization(ctx context.Context, clientAuthorization *client.ClientAuthorization) error {
+	return writeJson(c.RootDir, fmt.Sprintf("%s-%s", clientAuthorization.UserId, clientAuthorization.ClientId), clientAuthorization)
 }
 
 func (f *fsKeyStore) GetKey(kid string) (*keys.JwkKeypair, error) {

@@ -19,7 +19,7 @@ type wellKnownHandler struct {
 }
 
 func (obj *wellKnownHandler) Jwks(ctx context.Context) (*api.JWKSetResponse, error) {
-	keyStore := obj.DaoSource.GetKeyStore()
+	keyStore := obj.DaoSource.GetKeyStore(ctx)
 	keys, err := keyStore.ListKeys()
 	if err != nil {
 		return nil, err

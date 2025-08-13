@@ -1,34 +1,26 @@
 package client
 
-import "time"
+import (
+	"context"
+	"time"
 
-type PaginationScroller func(page []*ClientAuthorization) bool
-
-type DepaginatedScroller struct {
-	Results []*ClientAuthorization
-}
-
-func (scroller *DepaginatedScroller) Scroller(page []*ClientAuthorization) bool {
-	if scroller.Results == nil {
-		scroller.Results = make([]*ClientAuthorization, 0)
-	}
-	scroller.Results = append(scroller.Results, page...)
-	return true
-}
+	"github.com/kncept-oauth/simple-oidc/service/dao/ddbutil"
+)
 
 type ClientAuthorizationStore interface {
-	ClientAuthorizationsByUser(userId string, scroller PaginationScroller) error
-	ClientAuthorizationsByClient(clientId string, scroller PaginationScroller) error // could be a very large amount.
-	GetClientAuthorization(clientId string, userId string) (*ClientAuthorization, error)
+	ClientAuthorizationsByUser(ctx context.Context, userId string, scroller ddbutil.SimpleScroller[ClientAuthorization]) error
 
-	SaveClientAuthorization(clientAuthorization *ClientAuthorization) error
-	DeleteClientAuthorization(authorizationSessionId string) error
+	// could easily be a very large amount.
+	ClientAuthorizationsByClient(ctx context.Context, clientId string, scroller ddbutil.SimpleScroller[ClientAuthorization]) error
+
+	GetClientAuthorization(ctx context.Context, userId string, clientId string) (*ClientAuthorization, error)
+	SaveClientAuthorization(ctx context.Context, clientAuthorization *ClientAuthorization) error
+	DeleteClientAuthorization(ctx context.Context, userId string, clientId string) error
 }
 
 type ClientAuthorization struct {
-	ClientId               string
-	UserId                 string
-	AuthorizedAt           time.Time
-	LastRefreshedAt        time.Time
-	AuthorizationSessionId string
+	UserId          string    `dynamodbav:"userId"`
+	ClientId        string    `dynamodbav:"clientId"`
+	AuthorizedAt    time.Time `dynamodbav:"authorizedAt"`
+	LastRefreshedAt time.Time `dynamodbav:"lastRefreshedAt"`
 }

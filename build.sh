@@ -29,11 +29,13 @@ prepare() {
 test() {
   cd service 
   go test ./...
+  go test -tags integration ./...
   cd ..
   
   cd testharness 
   go test ./...
   cd ..
+  
 
   # cd deploy
   # npm run test

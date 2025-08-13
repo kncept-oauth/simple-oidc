@@ -3,21 +3,21 @@ package client
 import "context"
 
 type Client struct {
-	ClientId string // assigned guid
+	ClientId string `dynamodbav:"clientId"` // assigned guid
 
 	// can be an empty array (all scopes)
-	AllowedScopes []string
+	AllowedScopes []string `dynamodbav:"allowedScopes"`
 
 	// treat the response from GetAllowedRedirectUris as a regex?
 	// RECOMMENDED TO BE FALSE
-	AllowRegexForRedirectUri bool
+	AllowRegexForRedirectUri bool `dynamodbav:"regexForRedirectUri"`
 
 	// regex scripts for redirect uris
-	AllowedRedirectUris []string
+	AllowedRedirectUris []string `dynamodbav:"allowedRedirectUris"`
 
-	PublicName    string
-	PublicWebsite string
-	Description   string
+	PublicName    string `dynamodbav:"publicName"`
+	PublicWebsite string `dynamodbav:"publicWebsite"`
+	Description   string `dynamodbav:"description"`
 }
 
 type ClientStore interface {

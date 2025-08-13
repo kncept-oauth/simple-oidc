@@ -26,7 +26,7 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 
 	viewEngine := html.NewFileSystem(http.FS(webcontent.Views), ".html")
 	viewEngine.AddFunc("Clients", func() []*client.Client {
-		clients, _ := daoSource.GetClientStore().ListClients(ctx)
+		clients, _ := daoSource.GetClientStore(ctx).ListClients(ctx)
 		return clients
 	})
 
@@ -37,7 +37,7 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 		},
 	)
 
-	staticClient, err := daoSource.GetClientStore().GetClient(ctx, staticClientId)
+	staticClient, err := daoSource.GetClientStore(ctx).GetClient(ctx, staticClientId)
 	if err != nil {
 		panic(err)
 	}
@@ -51,7 +51,7 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 			// 	"https://localhost:3000/",
 			// },
 		}
-		daoSource.GetClientStore().SaveClient(ctx, staticClient)
+		daoSource.GetClientStore(ctx).SaveClient(ctx, staticClient)
 	}
 
 	fiberOidcConfig := &fiberoidc.Config{
@@ -110,16 +110,16 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 					"https://localhost:3000/oauth2/callback",
 				},
 			}
-			daoSource.GetClientStore().SaveClient(ctx, c)
+			daoSource.GetClientStore(ctx).SaveClient(ctx, c)
 		case "delete":
-			c, err := daoSource.GetClientStore().GetClient(ctx, payload.Id)
+			c, err := daoSource.GetClientStore(ctx).GetClient(ctx, payload.Id)
 			if err != nil {
 				return err
 			}
 			if c == nil {
 				return errors.New("no client with id " + payload.Id)
 			}
-			err = daoSource.GetClientStore().RemoveClient(ctx, payload.Id)
+			err = daoSource.GetClientStore(ctx).RemoveClient(ctx, payload.Id)
 			if err != nil {
 				return err
 			}

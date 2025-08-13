@@ -1,6 +1,7 @@
 package dispatcher
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"html/template"
@@ -12,9 +13,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kncept-oauth/simple-oidc/service/client"
 	"github.com/kncept-oauth/simple-oidc/service/dao"
+	"github.com/kncept-oauth/simple-oidc/service/dao/ddbutil"
 	"github.com/kncept-oauth/simple-oidc/service/jwtutil"
 	"github.com/kncept-oauth/simple-oidc/service/keys"
 	"github.com/kncept-oauth/simple-oidc/service/params"
@@ -32,6 +33,7 @@ type acceptOidcHandler struct {
 
 func (obj *acceptOidcHandler) myAccountHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
+		ctx := req.Context()
 		claims := obj.userClaims(req)
 		if claims == nil {
 			res.Header().Add("Location", "/login")
@@ -41,14 +43,14 @@ func (obj *acceptOidcHandler) myAccountHandler() http.HandlerFunc {
 
 		userId := claims.Sub
 
-		user, err := obj.daoSource.GetUserStore().GetUser(userId)
+		user, err := obj.daoSource.GetUserStore(ctx).GetUser(userId)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			res.WriteHeader(500)
 		}
 
-		clientAuthorizations := &client.DepaginatedScroller{}
-		err = obj.daoSource.GetClientAuthorizationStore().ClientAuthorizationsByUser(userId, clientAuthorizations.Scroller)
+		clientAuthorizations := &ddbutil.DepaginatedScroller[client.ClientAuthorization]{}
+		err = obj.daoSource.GetClientAuthorizationStore(ctx).ClientAuthorizationsByUser(ctx, userId, clientAuthorizations)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			res.WriteHeader(500)
@@ -90,6 +92,7 @@ func (obj *acceptOidcHandler) userId(req *http.Request) string {
 }
 
 func (obj *acceptOidcHandler) userClaims(req *http.Request) *session.AuthTokenJwt {
+	ctx := req.Context()
 	soJwt, err := req.Cookie(LoginJwtCookieName) // Simple Oidc Session JWT (if present)
 	if err != nil {
 		return nil
@@ -101,7 +104,7 @@ func (obj *acceptOidcHandler) userClaims(req *http.Request) *session.AuthTokenJw
 	if kid == "" {
 		return nil
 	}
-	key, err := obj.daoSource.GetKeyStore().GetKey(kid)
+	key, err := obj.daoSource.GetKeyStore(ctx).GetKey(kid)
 	if err != nil || key == nil {
 		return nil
 	}
@@ -117,6 +120,7 @@ func (obj *acceptOidcHandler) userClaims(req *http.Request) *session.AuthTokenJw
 // show the 'accept page' so that the user KNOWS where they are going
 func (obj *acceptOidcHandler) acceptLogin() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
+		ctx := req.Context()
 
 		// current auth attempt details
 		// if _anything_ in the query params is different, update
@@ -171,9 +175,8 @@ func (obj *acceptOidcHandler) acceptLogin() http.HandlerFunc {
 		userId := obj.userId(req)
 		if userId != "" {
 			if req.Method == http.MethodGet {
-
-				clientAuthorizationsScroller := &client.DepaginatedScroller{}
-				err := obj.daoSource.GetClientAuthorizationStore().ClientAuthorizationsByUser(userId, clientAuthorizationsScroller.Scroller)
+				clientAuthorizationsScroller := &ddbutil.DepaginatedScroller[client.ClientAuthorization]{}
+				err := obj.daoSource.GetClientAuthorizationStore(ctx).ClientAuthorizationsByUser(ctx, userId, clientAuthorizationsScroller)
 				if err != nil {
 					fmt.Printf("%v\n", err)
 					res.WriteHeader(500)
@@ -253,8 +256,8 @@ func (obj *acceptOidcHandler) confirmLogin() http.HandlerFunc {
 			return
 		}
 
-		clientAuthorizations := &client.DepaginatedScroller{}
-		err = obj.daoSource.GetClientAuthorizationStore().ClientAuthorizationsByUser(userId, clientAuthorizations.Scroller)
+		clientAuthorizations := &ddbutil.DepaginatedScroller[client.ClientAuthorization]{}
+		err = obj.daoSource.GetClientAuthorizationStore(ctx).ClientAuthorizationsByUser(ctx, userId, clientAuthorizations)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			res.WriteHeader(500)
@@ -268,12 +271,11 @@ func (obj *acceptOidcHandler) confirmLogin() http.HandlerFunc {
 		}
 		now := time.Now().UTC()
 		if newAuthorization {
-			err = obj.daoSource.GetClientAuthorizationStore().SaveClientAuthorization(&client.ClientAuthorization{
-				ClientId:               soCurrent.ClientId,
-				UserId:                 userId,
-				AuthorizedAt:           now,
-				LastRefreshedAt:        now,
-				AuthorizationSessionId: uuid.NewString(),
+			err = obj.daoSource.GetClientAuthorizationStore(ctx).SaveClientAuthorization(ctx, &client.ClientAuthorization{
+				ClientId:        soCurrent.ClientId,
+				UserId:          userId,
+				AuthorizedAt:    now,
+				LastRefreshedAt: now,
 			})
 			if err != nil {
 				fmt.Printf("%v\n", err)
@@ -282,7 +284,7 @@ func (obj *acceptOidcHandler) confirmLogin() http.HandlerFunc {
 			}
 		}
 
-		authCodeStore := obj.daoSource.GetAuthorizationCodeStore()
+		authCodeStore := obj.daoSource.GetAuthorizationCodeStore(ctx)
 		authCode, err := client.NewAuthorizationCode(userId, soCurrent.ToQueryParams())
 		if err != nil {
 			fmt.Printf("%v\n", err)
@@ -437,8 +439,8 @@ func (obj *acceptOidcHandler) respondWithStaticFile(filename string, contentType
 	}
 }
 
-func (obj *acceptOidcHandler) createUserSession(res http.ResponseWriter, user *users.OidcUser) {
-	key, err := keys.GetCurrentKey(obj.daoSource.GetKeyStore())
+func (obj *acceptOidcHandler) createUserSession(ctx context.Context, res http.ResponseWriter, user *users.OidcUser) {
+	key, err := keys.GetCurrentKey(obj.daoSource.GetKeyStore(ctx))
 	if err != nil {
 		obj.respondWithTemplate("register.html", 500, res, map[string]any{
 			"err": err,
@@ -448,7 +450,7 @@ func (obj *acceptOidcHandler) createUserSession(res http.ResponseWriter, user *u
 
 	// create a simple-oidc session
 	ses := session.NewSession(user.Id)
-	err = obj.daoSource.GetSessionStore().SaveSession(ses)
+	err = obj.daoSource.GetSessionStore(ctx).SaveSession(ses)
 	if err != nil {
 		obj.respondWithTemplate("register.html", 500, res, map[string]any{
 			"err": err,
@@ -501,6 +503,7 @@ func (obj *acceptOidcHandler) createUserSession(res http.ResponseWriter, user *u
 
 func (obj *acceptOidcHandler) registerHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
+		ctx := req.Context()
 		claims := obj.userClaims(req)
 		if claims != nil {
 			res.Header().Add("Location", "/account")
@@ -518,7 +521,7 @@ func (obj *acceptOidcHandler) registerHandler() http.HandlerFunc {
 			req.ParseForm()
 
 			userService := &users.UserService{
-				UserStore: obj.daoSource.GetUserStore(),
+				UserStore: obj.daoSource.GetUserStore(ctx),
 			}
 
 			username := req.Form.Get("username")
@@ -542,7 +545,7 @@ func (obj *acceptOidcHandler) registerHandler() http.HandlerFunc {
 				})
 				return
 			}
-			obj.createUserSession(res, user)
+			obj.createUserSession(ctx, res, user)
 			return
 		}
 
@@ -552,6 +555,7 @@ func (obj *acceptOidcHandler) registerHandler() http.HandlerFunc {
 
 func (obj *acceptOidcHandler) loginHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
+		ctx := req.Context()
 		claims := obj.userClaims(req)
 		if claims != nil {
 			res.Header().Add("Location", "/account")
@@ -579,7 +583,7 @@ func (obj *acceptOidcHandler) loginHandler() http.HandlerFunc {
 		if req.Method == http.MethodPost {
 			req.ParseForm()
 			userService := &users.UserService{
-				UserStore: obj.daoSource.GetUserStore(),
+				UserStore: obj.daoSource.GetUserStore(ctx),
 			}
 
 			username := req.Form.Get("username")
@@ -589,7 +593,7 @@ func (obj *acceptOidcHandler) loginHandler() http.HandlerFunc {
 				res.WriteHeader(500)
 				return
 			} else {
-				obj.createUserSession(res, user)
+				obj.createUserSession(ctx, res, user)
 				return
 			}
 		}

@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/awslabs/aws-lambda-go-api-proxy/httpadapter"
 	"github.com/kncept-oauth/simple-oidc/service/dao"
 	"github.com/kncept-oauth/simple-oidc/service/development"
@@ -13,6 +15,7 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
 	runmode := os.Getenv("RUN_MODE")
 	if runmode == "" {
 		lambdaFunctionName := os.Getenv("AWS_LAMBDA_FUNCTION_NAME")
@@ -26,12 +29,17 @@ func main() {
 	hostUrl := "https://localhost:8443"
 	hostName := os.Getenv("host_name")
 	if hostName != "" {
-		hostUrl = fmt.Sprintf("https://%s")
+		hostUrl = fmt.Sprintf("https://%s", hostName)
 	}
 
 	switch runmode {
 	case "aws-lambda":
-		RunAsLambda(dao.NewDynamoDbDao(), hostUrl)
+		cfg, err := config.LoadDefaultConfig(ctx)
+		if err != nil {
+			panic(err)
+		}
+
+		RunAsLambda(dao.NewDynamoDbDao(cfg, ""), hostUrl)
 	case "dev":
 		development.RunLocally(dao.NewFilesystemDao(), hostUrl)
 	default:

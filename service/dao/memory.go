@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/kncept-oauth/simple-oidc/service/client"
+	"github.com/kncept-oauth/simple-oidc/service/dao/ddbutil"
 	"github.com/kncept-oauth/simple-oidc/service/keys"
 	"github.com/kncept-oauth/simple-oidc/service/session"
 	"github.com/kncept-oauth/simple-oidc/service/users"
@@ -24,27 +25,27 @@ func NewMemoryDao() DaoSource {
 	return &MemoryDao{}
 }
 
-func (obj *MemoryDao) GetClientStore() client.ClientStore {
+func (obj *MemoryDao) GetClientStore(ctx context.Context) client.ClientStore {
 	return obj
 }
 
-func (obj *MemoryDao) GetUserStore() users.UserStore {
+func (obj *MemoryDao) GetUserStore(ctx context.Context) users.UserStore {
 	return obj
 }
 
-func (obj *MemoryDao) GetSessionStore() session.SessionStore {
+func (obj *MemoryDao) GetSessionStore(ctx context.Context) session.SessionStore {
 	return obj
 }
 
-func (obj *MemoryDao) GetClientAuthorizationStore() client.ClientAuthorizationStore {
+func (obj *MemoryDao) GetClientAuthorizationStore(ctx context.Context) client.ClientAuthorizationStore {
 	return obj
 }
 
-func (obj *MemoryDao) GetKeyStore() keys.Keystore {
+func (obj *MemoryDao) GetKeyStore(ctx context.Context) keys.Keystore {
 	return obj
 }
 
-func (obj *MemoryDao) GetAuthorizationCodeStore() client.AuthorizationCodeStore {
+func (obj *MemoryDao) GetAuthorizationCodeStore(ctx context.Context) client.AuthorizationCodeStore {
 	return obj
 }
 
@@ -127,62 +128,55 @@ func (obj *MemoryDao) LoadSession(sessionId string) (*session.Session, error) {
 	return sessionObj.(*session.Session), nil
 }
 
-func (obj *MemoryDao) DeleteClientAuthorization(authorizationSessionId string) error {
-	obj.clientAuthorizations.Delete(authorizationSessionId)
+func (obj *MemoryDao) DeleteClientAuthorization(ctx context.Context, userId string, clientId string) error {
+	obj.clientAuthorizations.Delete(fmt.Sprintf("%s-%s", userId, clientId))
 	return nil
 }
 
-func (obj *MemoryDao) SaveClientAuthorization(clientAuthorization *client.ClientAuthorization) error {
-	obj.clientAuthorizations.Store(clientAuthorization.AuthorizationSessionId, clientAuthorization)
+func (obj *MemoryDao) SaveClientAuthorization(ctx context.Context, clientAuthorization *client.ClientAuthorization) error {
+	obj.clientAuthorizations.Store(fmt.Sprintf("%s-%s", clientAuthorization.UserId, clientAuthorization.ClientId), clientAuthorization)
 	return nil
 }
 
-func (obj *MemoryDao) ClientAuthorizationsByClient(clientId string, scroller client.PaginationScroller) error {
+func (obj *MemoryDao) ClientAuthorizationsByClient(ctx context.Context, clientId string, scroller ddbutil.SimpleScroller[client.ClientAuthorization]) error {
 	obj.clientAuthorizations.Range(func(key, value any) bool {
 		ca := value.(*client.ClientAuthorization)
 		if ca.ClientId != clientId {
 			return true
 		}
-		return scroller([]*client.ClientAuthorization{
+		return scroller.Scroll([]*client.ClientAuthorization{
 			ca,
 		})
 	})
 	return nil
 }
 
-func (obj *MemoryDao) ClientAuthorizationsByUser(userId string, scroller client.PaginationScroller) error {
+func (obj *MemoryDao) ClientAuthorizationsByUser(ctx context.Context, userId string, scroller ddbutil.SimpleScroller[client.ClientAuthorization]) error {
 	obj.clientAuthorizations.Range(func(key, value any) bool {
 		ca := value.(*client.ClientAuthorization)
 		if ca.UserId != userId {
 			return true
 		}
-		return scroller([]*client.ClientAuthorization{
+		return scroller.Scroll([]*client.ClientAuthorization{
 			ca,
 		})
 	})
 	return nil
 }
 
-func (obj *MemoryDao) GetClientAuthorization(clientId string, userId string) (*client.ClientAuthorization, error) {
-	var found *client.ClientAuthorization
-	obj.clientAuthorizations.Range(func(key, value any) bool {
-		ca := value.(*client.ClientAuthorization)
-		if ca.UserId == userId && ca.ClientId == clientId {
-			found = ca
-			return false
-		}
-		return true
-	})
-	return found, nil
+func (obj *MemoryDao) GetClientAuthorization(ctx context.Context, userId string, clientId string) (*client.ClientAuthorization, error) {
+	value, ok := obj.clientAuthorizations.Load(fmt.Sprintf("%s-%s", userId, clientId))
+	if !ok {
+		return nil, nil
+	}
+	return value.(*client.ClientAuthorization), nil
 }
 
-// GetAuthorizationCode implements client.AuthorizationCodeStore.
 func (obj *MemoryDao) GetAuthorizationCode(ctx context.Context, code string) (*client.AuthorizationCode, error) {
 	c, _ := obj.clientAuthorizations.Load(code)
 	return c.(*client.AuthorizationCode), nil
 }
 
-// SaveAuthorizationCode implements client.AuthorizationCodeStore.
 func (obj *MemoryDao) SaveAuthorizationCode(ctx context.Context, code *client.AuthorizationCode) error {
 	obj.clientAuthorizations.Store(code.Code, code)
 	return nil

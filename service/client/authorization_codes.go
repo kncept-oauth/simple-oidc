@@ -15,10 +15,10 @@ type AuthorizationCodeStore interface {
 }
 
 type AuthorizationCode struct {
-	Code       string
-	UserId     string
-	Expiry     *time.Time
-	OidcParams string
+	Code       string     `dynamodbav:"code"` // partition key
+	UserId     string     `dynamodbav:"userId"`
+	Expiry     *time.Time `dynamodbav:"expiry"`
+	OidcParams string     `dynamodbav:"params"`
 	// session id
 }
 
