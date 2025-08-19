@@ -20,17 +20,16 @@ type wellKnownHandler struct {
 
 func (obj *wellKnownHandler) Jwks(ctx context.Context) (*api.JWKSetResponse, error) {
 	keyStore := obj.DaoSource.GetKeyStore(ctx)
-	keys, err := keyStore.ListKeys()
+	keys, err := keyStore.ListKeys(ctx)
 	if err != nil {
 		return nil, err
 	}
 	responseKeys := make([]api.JWKResponse, 0)
-	for _, kid := range keys {
-		key, err := keyStore.GetKey(kid)
+	for _, key := range keys {
+		jwkKey, err := key.ToJwkDetails()
 		if err != nil {
 			return nil, err
 		}
-		jwkKey := key.ToJwkDetails()
 		switch jwkKey.Kty {
 		case "RSA":
 			responseKeys = append(responseKeys, api.JWKResponse{

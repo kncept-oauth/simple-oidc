@@ -1,6 +1,7 @@
 package users
 
 import (
+	"context"
 	"crypto/md5"
 	"crypto/sha512"
 	"encoding/base64"
@@ -14,14 +15,14 @@ import (
 )
 
 type UserStore interface {
-	GetUser(id string) (*OidcUser, error)
-	SaveUser(user *OidcUser) error
+	GetUser(ctx context.Context, id string) (*OidcUser, error)
+	SaveUser(ctx context.Context, user *OidcUser) error
 }
 
 type OidcUser struct {
-	Id              string
-	Salt            string
-	EncodedPassword string
+	Id              string `dynamodbav:"id"`
+	Salt            string `dynamodbav:"salt"`
+	EncodedPassword string `dynamodbav:"pass"`
 }
 
 type EncodingType string
@@ -112,4 +113,19 @@ func ComparePassword(salt, password string, hash string) bool {
 		expected, err := EncodePassword(salt, password)
 		return err == nil && expected == hash
 	}
+}
+
+func (u *OidcUser) SetPassword(rawPassword string) error {
+	salt := GenerateSalt()
+	encodedPassword, err := EncodePassword(salt, rawPassword)
+	if err != nil {
+		return nil
+	}
+	u.Salt = salt
+	u.EncodedPassword = encodedPassword
+	return nil
+}
+
+func (u *OidcUser) PasswordMatches(rawPassword string) bool {
+	return ComparePassword(u.Salt, rawPassword, u.EncodedPassword)
 }

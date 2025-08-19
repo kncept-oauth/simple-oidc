@@ -1,6 +1,8 @@
 package keys
 
 import (
+	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -17,12 +19,12 @@ import (
 )
 
 type Keystore interface {
-	ListKeys() ([]string, error)
-	GetKey(kid string) (*JwkKeypair, error)
-	SaveKey(keypair *JwkKeypair) error
+	ListKeys(ctx context.Context) ([]*JwkKeypair, error)
+	GetKey(ctx context.Context, kid string) (*JwkKeypair, error)
+	SaveKey(ctx context.Context, keypair *JwkKeypair) error
 }
 
-func GetCurrentKey(store Keystore, asof ...time.Time) (*JwkKeypair, error) {
+func GetCurrentKey(ctx context.Context, store Keystore, asof ...time.Time) (*JwkKeypair, error) {
 	if len(asof) > 1 {
 		panic("must only provie one asof arg")
 	}
@@ -31,15 +33,11 @@ func GetCurrentKey(store Keystore, asof ...time.Time) (*JwkKeypair, error) {
 			time.Now().UTC().Truncate(time.Second),
 		}
 	}
-	keys, err := store.ListKeys()
+	keys, err := store.ListKeys(ctx)
 	if err != nil {
 		return nil, err
 	}
-	for _, kid := range keys {
-		key, err := store.GetKey(kid)
-		if err != nil {
-			return nil, err
-		}
+	for _, key := range keys {
 		if key.InDate(asof[0]) {
 			return key, nil
 		}
@@ -49,7 +47,7 @@ func GetCurrentKey(store Keystore, asof ...time.Time) (*JwkKeypair, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = store.SaveKey(key)
+	err = store.SaveKey(ctx, key)
 	if err != nil {
 		return nil, err
 	}
@@ -57,14 +55,14 @@ func GetCurrentKey(store Keystore, asof ...time.Time) (*JwkKeypair, error) {
 }
 
 type JwkKeypair struct {
-	Kid string // Key ID
-	Kty string // eg: RSA
+	Kid string `dynamodbav:"kid"` // Key ID
+	Kty string `dynamodbav:"kty"` // eg: RSA
 
-	Rsa *rsa.PrivateKey
-	Pem string //  STORE as a PEM, a struct
+	// Rsa *rsa.PrivateKey `dynamodbav:"rsa"`
+	Pem string `dynamodbav:"pem"` //  STORE as a PEM, a struct
 
-	Exp *time.Time // expiry
-	Nbf *time.Time // not before time
+	Exp *time.Time `dynamodbav:"exp"` // expiry
+	Nbf *time.Time `dynamodbav:"nbf"` // not before time
 }
 
 func (jwk *JwkKeypair) InDate(when time.Time) bool {
@@ -103,24 +101,64 @@ func GenerateJwkKeypair(asof ...time.Time) (*JwkKeypair, error) {
 	}
 	now := asof[0].UTC().Truncate(time.Second)
 	exp := now.Add(30 * 24 * time.Hour)
-	return &JwkKeypair{
+	keyPair := &JwkKeypair{
 		Kid: uuid.NewString(),
 		Kty: "RSA",
-		Rsa: rsaKey,
 		Pem: "",
 
 		Nbf: &now,
 		Exp: &exp,
-	}, nil
+	}
+	err = keyPair.encodeKey(rsaKey)
+	if err != nil {
+		return nil, err
+	}
+	return keyPair, nil
 }
 
-func (key *JwkKeypair) ToJwkDetails() *JwkDetails {
-	switch key.Kty {
-	case "RSA":
-		return JwkFromRsa(key.Kid, &key.Rsa.PublicKey)
-	default:
-		panic("unable to convert to JwkDetails: " + key.Kty)
+func (key *JwkKeypair) encodeKey(encryptionKey any) error {
+	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(encryptionKey)
+	if err != nil {
+		return err
 	}
+	pemBlock := &pem.Block{
+		Type:  "PRIVATE KEY", // Use "PRIVATE KEY" for PKCS#8
+		Bytes: privateKeyBytes,
+	}
+	var buf bytes.Buffer
+	err = pem.Encode(&buf, pemBlock)
+	if err != nil {
+		return err
+	}
+	key.Pem = buf.String()
+	return nil
+}
+func (key *JwkKeypair) DecodeKey() (any, error) {
+	pemBlock, remainder := pem.Decode([]byte(key.Pem))
+	if len(remainder) != 0 {
+		return nil, fmt.Errorf("unable to parse pem block")
+	}
+	privateKey, err := x509.ParsePKCS8PrivateKey(pemBlock.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	return privateKey, nil
+}
+
+func (key *JwkKeypair) ToJwkDetails() (*JwkDetails, error) {
+	privateKey, err := key.DecodeKey()
+	if err != nil {
+		return nil, err
+	}
+
+	switch pk := privateKey.(type) {
+	case *rsa.PrivateKey:
+		if key.Kty != "RSA" {
+			return nil, fmt.Errorf("key type mismatch in %v", key.Kty)
+		}
+		return JwkFromRsa(key.Kid, &pk.PublicKey), nil
+	}
+	return nil, fmt.Errorf("unable to convert to JwkDetails: %v", key.Kty)
 }
 
 // used for PUBLIC keys only.

@@ -167,14 +167,58 @@ func (d *DynamoDbDaoSource) GetClientStore(ctx context.Context) client.ClientSto
 	}
 }
 
-func (d *DynamoDbDaoSource) GetKeyStore(ctx context.Context) keys.Keystore {
-	panic("unimplemented")
+type DdbKeyStore struct {
+	ddbutil.DdbEntityMapper[keys.JwkKeypair]
 }
 
-func (d *DynamoDbDaoSource) GetSessionStore(ctx context.Context) session.SessionStore {
-	panic("unimplemented")
+func (d *DynamoDbDaoSource) GetKeyStore(ctx context.Context) keys.Keystore {
+	return &DdbKeyStore{
+		DdbEntityMapper: ddbutil.DdbEntityMapper[keys.JwkKeypair]{
+			Ddb:       d.ddb,
+			TableName: d.tableName("keys"),
+			Supplier: func() *keys.JwkKeypair {
+				return &keys.JwkKeypair{}
+			},
+			PartitionKeyName: "kid",
+		},
+	}
+}
+
+func (d *DdbKeyStore) ListKeys(ctx context.Context) ([]*keys.JwkKeypair, error) {
+	return d.Scan(ctx)
+}
+func (d *DdbKeyStore) GetKey(ctx context.Context, kid string) (*keys.JwkKeypair, error) {
+	return d.Get(ctx, kid, "")
+}
+func (d *DdbKeyStore) SaveKey(ctx context.Context, keypair *keys.JwkKeypair) error {
+	return d.Save(ctx, keypair)
+}
+
+type DdbUserStore struct {
+	ddbutil.DdbEntityMapper[users.OidcUser]
+}
+
+func (d *DdbUserStore) GetUser(ctx context.Context, id string) (*users.OidcUser, error) {
+	return d.Get(ctx, id, "")
+}
+
+func (d *DdbUserStore) SaveUser(ctx context.Context, user *users.OidcUser) error {
+	return d.Save(ctx, user)
 }
 
 func (d *DynamoDbDaoSource) GetUserStore(ctx context.Context) users.UserStore {
+	return &DdbUserStore{
+		DdbEntityMapper: ddbutil.DdbEntityMapper[users.OidcUser]{
+			Ddb:       d.ddb,
+			TableName: d.tableName("users"),
+			Supplier: func() *users.OidcUser {
+				return &users.OidcUser{}
+			},
+			PartitionKeyName: "id",
+		},
+	}
+}
+
+func (d *DynamoDbDaoSource) GetSessionStore(ctx context.Context) session.SessionStore {
 	panic("unimplemented")
 }

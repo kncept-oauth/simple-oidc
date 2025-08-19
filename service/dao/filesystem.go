@@ -203,16 +203,28 @@ func (c *clientAuthorizationStore) SaveClientAuthorization(ctx context.Context, 
 	return writeJson(c.RootDir, fmt.Sprintf("%s-%s", clientAuthorization.UserId, clientAuthorization.ClientId), clientAuthorization)
 }
 
-func (f *fsKeyStore) GetKey(kid string) (*keys.JwkKeypair, error) {
+func (f *fsKeyStore) GetKey(ctx context.Context, kid string) (*keys.JwkKeypair, error) {
 	return readJson[keys.JwkKeypair](f.RootDir, kid)
 }
 
-func (f *fsKeyStore) SaveKey(keypair *keys.JwkKeypair) error {
+func (f *fsKeyStore) SaveKey(ctx context.Context, keypair *keys.JwkKeypair) error {
 	return writeJson(f.RootDir, keypair.Kid, keypair)
 }
 
-func (f *fsKeyStore) ListKeys() ([]string, error) {
-	return listDir(f.RootDir)
+func (f *fsKeyStore) ListKeys(ctx context.Context) ([]*keys.JwkKeypair, error) {
+	keyIds, err := listDir(f.RootDir)
+	if err != nil {
+		return nil, err
+	}
+	keys := make([]*keys.JwkKeypair, len(keyIds))
+	for i, id := range keyIds {
+		key, err := f.GetKey(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		keys[i] = key
+	}
+	return keys, nil
 }
 
 func (c *fsClientStore) GetClient(ctx context.Context, clientId string) (*client.Client, error) {
@@ -243,11 +255,11 @@ func (c *fsClientStore) RemoveClient(ctx context.Context, clientId string) error
 	return deleteJson(c.RootDir, clientId)
 }
 
-func (c *fsUserStore) GetUser(id string) (*users.OidcUser, error) {
+func (c *fsUserStore) GetUser(ctx context.Context, id string) (*users.OidcUser, error) {
 	return readJson[users.OidcUser](c.RootDir, id)
 
 }
-func (c *fsUserStore) SaveUser(user *users.OidcUser) error {
+func (c *fsUserStore) SaveUser(ctx context.Context, user *users.OidcUser) error {
 	return writeJson(c.RootDir, user.Id, user)
 }
 

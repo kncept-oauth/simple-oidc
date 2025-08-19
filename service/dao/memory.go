@@ -49,7 +49,7 @@ func (obj *MemoryDao) GetAuthorizationCodeStore(ctx context.Context) client.Auth
 	return obj
 }
 
-func (obj *MemoryDao) GetKey(kid string) (*keys.JwkKeypair, error) {
+func (obj *MemoryDao) GetKey(ctx context.Context, kid string) (*keys.JwkKeypair, error) {
 	keypair, ok := obj.keys.Load(kid)
 	if ok {
 		return keypair.(*keys.JwkKeypair), nil
@@ -57,18 +57,18 @@ func (obj *MemoryDao) GetKey(kid string) (*keys.JwkKeypair, error) {
 	return nil, nil
 }
 
-func (obj *MemoryDao) SaveKey(keypair *keys.JwkKeypair) error {
+func (obj *MemoryDao) SaveKey(ctx context.Context, keypair *keys.JwkKeypair) error {
 	obj.keys.Store(keypair.Kid, keypair)
 	return nil
 }
 
-func (obj *MemoryDao) ListKeys() ([]string, error) {
-	keys := make([]string, 0)
-	obj.keys.Range(func(key any, _ any) bool {
-		keys = append(keys, key.(string))
+func (obj *MemoryDao) ListKeys(ctx context.Context) ([]*keys.JwkKeypair, error) {
+	foundKeys := make([]*keys.JwkKeypair, 0)
+	obj.keys.Range(func(key any, value any) bool {
+		foundKeys = append(foundKeys, value.(*keys.JwkKeypair))
 		return true
 	})
-	return keys, nil
+	return foundKeys, nil
 }
 
 func (obj *MemoryDao) GetClient(ctx context.Context, clientId string) (*client.Client, error) {
@@ -107,14 +107,14 @@ func (obj *MemoryDao) RemoveClient(ctx context.Context, clientId string) error {
 	return nil
 }
 
-func (obj *MemoryDao) GetUser(id string) (*users.OidcUser, error) {
+func (obj *MemoryDao) GetUser(ctx context.Context, id string) (*users.OidcUser, error) {
 	val, ok := obj.users.Load(id)
 	if !ok {
 		return nil, nil
 	}
 	return val.(*users.OidcUser), nil
 }
-func (obj *MemoryDao) SaveUser(user *users.OidcUser) error {
+func (obj *MemoryDao) SaveUser(ctx context.Context, user *users.OidcUser) error {
 	obj.users.Store(user.Id, user)
 	return nil
 }

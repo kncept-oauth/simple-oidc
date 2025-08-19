@@ -5,6 +5,7 @@ package dao
 
 import (
 	"context"
+	"crypto/rsa"
 	"fmt"
 	"log"
 	"os"
@@ -18,6 +19,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/kncept-oauth/simple-oidc/service/client"
 	"github.com/kncept-oauth/simple-oidc/service/dao/ddbutil"
+	"github.com/kncept-oauth/simple-oidc/service/keys"
+	"github.com/kncept-oauth/simple-oidc/service/users"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/localstack"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -132,6 +135,19 @@ func InitAllTables(ctx context.Context, cfg aws.Config) {
 		}
 		tablesNames = append(tablesNames, obj.DdbEntityMapper.TableName)
 	}
+	if obj, ok := dao.GetKeyStore(ctx).(*DdbKeyStore); ok {
+		if err := ddbutil.InitializeTable(ctx, ddb, &obj.DdbEntityMapper); err != nil {
+			panic(err)
+		}
+		tablesNames = append(tablesNames, obj.DdbEntityMapper.TableName)
+	}
+	if obj, ok := dao.GetUserStore(ctx).(*DdbUserStore); ok {
+		if err := ddbutil.InitializeTable(ctx, ddb, &obj.DdbEntityMapper); err != nil {
+			panic(err)
+		}
+		tablesNames = append(tablesNames, obj.DdbEntityMapper.TableName)
+	}
+
 }
 
 func TestMain(m *testing.M) {
@@ -333,4 +349,143 @@ func TestAuthorizationCodeStore(t *testing.T) {
 	if code.Code != newAuthCode.Code {
 		t.Fatalf("Expected %v but got %v as the code", newAuthCode.Code, code.Code)
 	}
+}
+
+func TestKeystore(t *testing.T) {
+	cfg := *AwsCfg
+	ctx := t.Context()
+	dao := NewDynamoDbDao(cfg, "")
+	keyStore := dao.GetKeyStore(ctx)
+
+	listedKeys, err := keyStore.ListKeys(ctx)
+	if err != nil {
+		t.Fatalf("Unable to lise keys: %v", err)
+	}
+	if len(listedKeys) != 0 {
+		t.Fatalf("should have found no keys, but found %v", len(listedKeys))
+	}
+
+	keyId := uuid.NewString()
+	key, err := keyStore.GetKey(ctx, keyId)
+	if err != nil {
+		t.Fatalf("Error getting key: %v", err)
+	}
+	if key != nil {
+		t.Fatalf("unexpectedly found a key: %+v", key)
+	}
+
+	key, err = keys.GenerateJwkKeypair()
+	if err != nil {
+		t.Fatalf("Unable to generate a keypair: %v", err)
+	}
+
+	key.Kid = keyId
+	err = keyStore.SaveKey(ctx, key)
+	if err != nil {
+		t.Fatalf("Unable to save key: %v", err)
+	}
+
+	listedKeys, err = keyStore.ListKeys(ctx)
+	if err != nil {
+		t.Fatalf("Unable to list keys: %v", err)
+	}
+	if len(listedKeys) != 1 {
+		t.Fatalf("Expected 1 keys, found %v", len(listedKeys))
+	}
+
+	foundKey, err := keyStore.GetKey(ctx, key.Kid)
+	if err != nil {
+		t.Fatalf("Unable to get key: %v", err)
+	}
+	if foundKey.Kid != key.Kid {
+		t.Fatalf("Key id mismatch between:\n%v\n%v\n", foundKey.Kid, key.Kid)
+	}
+	if foundKey.Pem != key.Pem {
+		t.Fatalf("Pem mismatch between:\n%v\n%v\n", foundKey.Pem, key.Pem)
+	}
+	k0, err := foundKey.DecodeKey()
+	if err != nil {
+		fmt.Printf("unable to decode key")
+	}
+	k1, err := key.DecodeKey()
+	if err != nil {
+		fmt.Printf("unable to decode key")
+	}
+	if !rsaIsEq(k0.(*rsa.PrivateKey), k1.(*rsa.PrivateKey)) {
+		t.Fatalf("mismatched:\n%+v\n%+v\n", foundKey.Pem, key.Pem)
+	}
+}
+func rsaIsEq(k0, k1 *rsa.PrivateKey) bool {
+	if k0.D.Cmp(k1.D) != 0 {
+		fmt.Printf("D  %v  %v\n", k0.D, k1.D)
+		return false
+	}
+	if k0.E != k1.E {
+		fmt.Printf("E  %v  %v\n", k0.E, k1.E)
+		return false
+	}
+	if k0.N.Cmp(k1.N) != 0 {
+		fmt.Printf("N  %v  %v\n", k0.N, k1.N)
+		return false
+	}
+	return true
+}
+
+func TestUserStore(t *testing.T) {
+	cfg := *AwsCfg
+	ctx := t.Context()
+	dao := NewDynamoDbDao(cfg, "")
+	userStore := dao.GetUserStore(ctx)
+
+	userId := uuid.NewString()
+	userPassword := uuid.NewString()
+	u, err := userStore.GetUser(ctx, userId)
+	if err != nil {
+		t.Fatalf("error getting user: %v", err)
+	}
+	if u != nil {
+		t.Fatalf("unexpected found user %v", u)
+	}
+
+	u = &users.OidcUser{
+		Id: userId,
+	}
+	err = u.SetPassword(userPassword)
+	if err != nil {
+		t.Fatalf("error setting password: %v", err)
+	}
+	err = userStore.SaveUser(ctx, u)
+	if err != nil {
+		t.Fatalf("error saving user: %v", err)
+	}
+
+	foundUser, err := userStore.GetUser(ctx, userId)
+	if err != nil {
+		t.Fatalf("error getting user: %v", err)
+	}
+	if foundUser == nil {
+		t.Fatalf("Unable to find user")
+	}
+
+	if u.Id != foundUser.Id {
+		t.Fatalf("user id mismatch: %v %v", u.Id, foundUser.Id)
+	}
+	if u.Salt != foundUser.Salt {
+		t.Fatalf("salt mismatch")
+	}
+
+	if !u.PasswordMatches(userPassword) {
+		t.Fatalf("password mismatch")
+	}
+	if !foundUser.PasswordMatches(userPassword) {
+		t.Fatalf("password mismatch")
+	}
+}
+
+func TestSessionStore(t *testing.T) {
+	cfg := *AwsCfg
+	ctx := t.Context()
+	dao := NewDynamoDbDao(cfg, "")
+	dao.GetSessionStore(ctx)
+	// sessionStore := dao.GetSessionStore(ctx)
 }
