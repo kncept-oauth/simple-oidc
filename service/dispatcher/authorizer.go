@@ -2,6 +2,7 @@ package dispatcher
 
 import (
 	"context"
+	"crypto/rsa"
 	"errors"
 	"fmt"
 	"log"
@@ -48,9 +49,18 @@ func (obj *authorizationHandler) TokenPost(ctx context.Context, req api.TokenPos
 		return nil, err
 	}
 
-	keyPair, err := keys.GetCurrentKey(obj.DaoSource.GetKeyStore(ctx))
+	keyPair, err := keys.GetCurrentKey(ctx, obj.DaoSource.GetKeyStore(ctx))
 	if err != nil {
 		return nil, err
+	}
+
+	decodedKey, err := keyPair.DecodeKey()
+	if err != nil {
+		return nil, err
+	}
+	rsaKey, isRsaKey := decodedKey.(*rsa.PrivateKey)
+	if !isRsaKey {
+		return nil, errors.New("not an rsa key")
 	}
 
 	now := time.Now().UTC().Truncate(time.Second)
@@ -62,7 +72,7 @@ func (obj *authorizationHandler) TokenPost(ctx context.Context, req api.TokenPos
 		Iat: now.Unix(),
 		Exp: now.Add(time.Hour * 3).Unix(),
 	}
-	jwt, err := jwtutil.ClaimsToJwt(claims, keyPair.Kid, keyPair.Rsa)
+	jwt, err := jwtutil.ClaimsToJwt(claims, keyPair.Kid, rsaKey)
 	if err != nil {
 		return nil, err
 	}

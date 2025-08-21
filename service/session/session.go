@@ -1,6 +1,7 @@
 package session
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,13 +11,16 @@ import (
 )
 
 type Session struct {
-	UserId    string
-	SessionId string
+	SessionId string `dynamodbav:"id"`
+	UserId    string `dynamodbav:"userId"`
 
-	Created      time.Time
-	Refreshed    time.Time
-	IssueCounter int64
-	RefreshCode  string // refresh code needs to match when extracted from the RefreshToken JWT
+	Fingerprint string `dynamodbav:"fingerprint"` // device fingerprint
+
+	Created      time.Time `dynamodbav:"created"`
+	Refreshed    time.Time `dynamodbav:"refreshed"`
+	IssueCounter int64     `dynamodbav:"issues"`
+	// TODO: JWT the RefreshCode
+	RefreshCode string `dynamodbav:"refreshCode"` // refresh code needs to match when extracted from the RefreshToken JWT
 }
 
 // TODO: these two should _really_ be a single function
@@ -78,8 +82,9 @@ type RefreshTokenJwt struct {
 }
 
 type SessionStore interface {
-	SaveSession(session *Session) error
-	LoadSession(sessionId string) (*Session, error)
+	SaveSession(ctx context.Context, session *Session) error
+	LoadSession(ctx context.Context, sessionId string, userId string) (*Session, error)
+	ListUserSessions(ctx context.Context, userId string) ([]*Session, error)
 }
 
 func NewSession(userId string) *Session {

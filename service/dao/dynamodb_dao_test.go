@@ -20,6 +20,7 @@ import (
 	"github.com/kncept-oauth/simple-oidc/service/client"
 	"github.com/kncept-oauth/simple-oidc/service/dao/ddbutil"
 	"github.com/kncept-oauth/simple-oidc/service/keys"
+	"github.com/kncept-oauth/simple-oidc/service/session"
 	"github.com/kncept-oauth/simple-oidc/service/users"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/localstack"
@@ -147,7 +148,12 @@ func InitAllTables(ctx context.Context, cfg aws.Config) {
 		}
 		tablesNames = append(tablesNames, obj.DdbEntityMapper.TableName)
 	}
-
+	if obj, ok := dao.GetSessionStore(ctx).(*DdbSessionStore); ok {
+		if err := ddbutil.InitializeTable(ctx, ddb, &obj.DdbEntityMapper); err != nil {
+			panic(err)
+		}
+		tablesNames = append(tablesNames, obj.DdbEntityMapper.TableName)
+	}
 }
 
 func TestMain(m *testing.M) {
@@ -486,6 +492,32 @@ func TestSessionStore(t *testing.T) {
 	cfg := *AwsCfg
 	ctx := t.Context()
 	dao := NewDynamoDbDao(cfg, "")
-	dao.GetSessionStore(ctx)
-	// sessionStore := dao.GetSessionStore(ctx)
+
+	sessionStore := dao.GetSessionStore(ctx)
+
+	ses, err := sessionStore.LoadSession(ctx, "none", "none")
+	if err != nil {
+		t.Fatalf("Unable to LoadSession: %v", err)
+	}
+	if ses != nil {
+		t.Fatalf("Unexpected found session")
+	}
+	ses = session.NewSession(uuid.NewString())
+	err = sessionStore.SaveSession(ctx, ses)
+	if err != nil {
+		t.Fatalf("Unable to SaveSession: %v", err)
+	}
+
+	foundSession, err := sessionStore.LoadSession(ctx, ses.SessionId, ses.UserId)
+	if err != nil {
+		t.Fatalf("Unable to LoadSession: %v", err)
+	}
+	if foundSession == nil {
+		t.Fatalf("Unable to find session")
+	}
+	if ses.SessionId != foundSession.SessionId || !ses.Created.Equal(foundSession.Created) {
+		fmt.Printf("session mismatch:\n%+v\n%+v\n", ses, foundSession)
+		t.Fatalf("session mismatch")
+	}
+
 }

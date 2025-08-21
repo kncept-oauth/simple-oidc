@@ -263,11 +263,26 @@ func (c *fsUserStore) SaveUser(ctx context.Context, user *users.OidcUser) error 
 	return writeJson(c.RootDir, user.Id, user)
 }
 
-func (c *fsSessionStore) SaveSession(session *session.Session) error {
+func (c *fsSessionStore) SaveSession(ctx context.Context, session *session.Session) error {
 	return writeJson(c.RootDir, session.SessionId, session)
 }
-func (c *fsSessionStore) LoadSession(sessionId string) (*session.Session, error) {
+func (c *fsSessionStore) LoadSession(ctx context.Context, sessionId string, userId string) (*session.Session, error) {
 	return readJson[session.Session](c.RootDir, sessionId)
+}
+func (c *fsSessionStore) ListUserSessions(ctx context.Context, userId string) ([]*session.Session, error) {
+	ids, err := listDir(c.RootDir)
+	if err != nil {
+		return nil, err
+	}
+	sessions := make([]*session.Session, len(ids))
+	for idx, id := range ids {
+		ses, err := c.LoadSession(ctx, id, "")
+		if err != nil {
+			return nil, err
+		}
+		sessions[idx] = ses
+	}
+	return sessions, nil
 }
 
 func (a *authorizationCodeStore) GetAuthorizationCode(ctx context.Context, code string) (*client.AuthorizationCode, error) {

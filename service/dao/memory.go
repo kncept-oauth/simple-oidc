@@ -119,13 +119,23 @@ func (obj *MemoryDao) SaveUser(ctx context.Context, user *users.OidcUser) error 
 	return nil
 }
 
-func (obj *MemoryDao) SaveSession(session *session.Session) error {
+func (obj *MemoryDao) SaveSession(ctx context.Context, session *session.Session) error {
 	obj.sessions.Store(session.SessionId, session)
 	return nil
 }
-func (obj *MemoryDao) LoadSession(sessionId string) (*session.Session, error) {
+func (obj *MemoryDao) LoadSession(ctx context.Context, sessionId string, userId string) (*session.Session, error) {
 	sessionObj, _ := obj.sessions.Load(sessionId)
 	return sessionObj.(*session.Session), nil
+}
+func (obj *MemoryDao) ListUserSessions(ctx context.Context, userId string) ([]*session.Session, error) {
+	sessions := make([]*session.Session, 0)
+	obj.clients.Range(func(key, value any) bool {
+		if s, ok := value.(*session.Session); ok {
+			sessions = append(sessions, s)
+		}
+		return true
+	})
+	return sessions, nil
 }
 
 func (obj *MemoryDao) DeleteClientAuthorization(ctx context.Context, userId string, clientId string) error {

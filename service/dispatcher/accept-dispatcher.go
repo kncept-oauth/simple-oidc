@@ -2,6 +2,7 @@ package dispatcher
 
 import (
 	"context"
+	"crypto/rsa"
 	"errors"
 	"fmt"
 	"html/template"
@@ -43,7 +44,7 @@ func (obj *acceptOidcHandler) myAccountHandler() http.HandlerFunc {
 
 		userId := claims.Sub
 
-		user, err := obj.daoSource.GetUserStore(ctx).GetUser(userId)
+		user, err := obj.daoSource.GetUserStore(ctx).GetUser(ctx, userId)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			res.WriteHeader(500)
@@ -104,17 +105,37 @@ func (obj *acceptOidcHandler) userClaims(req *http.Request) *session.AuthTokenJw
 	if kid == "" {
 		return nil
 	}
-	key, err := obj.daoSource.GetKeyStore(ctx).GetKey(kid)
+	key, err := obj.daoSource.GetKeyStore(ctx).GetKey(ctx, kid)
 	if err != nil || key == nil {
 		return nil
 	}
-	session := &session.AuthTokenJwt{}
-	err = jwtutil.JwtToClaims(soJwt.Value, &key.Rsa.PublicKey, session)
+
+	decodedKey, err := key.DecodeKey()
 	if err != nil {
 		return nil
 	}
-	return session
+	rsaKey, isRsaKey := decodedKey.(*rsa.PrivateKey)
+	if !isRsaKey {
+		return nil
+	}
 
+	jwtToken := &session.AuthTokenJwt{}
+	err = jwtutil.JwtToClaims(soJwt.Value, &rsaKey.PublicKey, jwtToken)
+	if err != nil {
+		return nil
+	}
+
+	// // jwtToken.SessionId
+	// session, err := obj.daoSource.GetSessionStore(ctx).LoadSession(ctx, jwtToken.SessionId)
+	// if err == nil {
+	// 	return nil
+	// }
+	// // session has expired, or been revoked
+	// if session == nil {
+	// 	return nil
+	// }
+
+	return jwtToken
 }
 
 // show the 'accept page' so that the user KNOWS where they are going
@@ -440,7 +461,23 @@ func (obj *acceptOidcHandler) respondWithStaticFile(filename string, contentType
 }
 
 func (obj *acceptOidcHandler) createUserSession(ctx context.Context, res http.ResponseWriter, user *users.OidcUser) {
-	key, err := keys.GetCurrentKey(obj.daoSource.GetKeyStore(ctx))
+	key, err := keys.GetCurrentKey(ctx, obj.daoSource.GetKeyStore(ctx))
+
+	decodedKey, err := key.DecodeKey()
+	if err != nil {
+		obj.respondWithTemplate("register.html", 500, res, map[string]any{
+			"err": err,
+		})
+		return
+	}
+	rsaKey, isRsaKey := decodedKey.(*rsa.PrivateKey)
+	if !isRsaKey {
+		obj.respondWithTemplate("register.html", 500, res, map[string]any{
+			"err": errors.New("not an rsa key"),
+		})
+		return
+	}
+
 	if err != nil {
 		obj.respondWithTemplate("register.html", 500, res, map[string]any{
 			"err": err,
@@ -450,7 +487,7 @@ func (obj *acceptOidcHandler) createUserSession(ctx context.Context, res http.Re
 
 	// create a simple-oidc session
 	ses := session.NewSession(user.Id)
-	err = obj.daoSource.GetSessionStore(ctx).SaveSession(ses)
+	err = obj.daoSource.GetSessionStore(ctx).SaveSession(ctx, ses)
 	if err != nil {
 		obj.respondWithTemplate("register.html", 500, res, map[string]any{
 			"err": err,
@@ -461,14 +498,14 @@ func (obj *acceptOidcHandler) createUserSession(ctx context.Context, res http.Re
 	authJwt := ses.MakeAuthTokenJwt(user, obj.urlPrefix, obj.urlPrefix)
 	refreshJwt := ses.MakeRefreshTokenJwt(*authJwt)
 	// TRACE
-	jwt, err := jwtutil.ClaimsToJwt(authJwt, key.Kid, key.Rsa)
+	jwt, err := jwtutil.ClaimsToJwt(authJwt, key.Kid, rsaKey)
 	if err != nil {
 		obj.respondWithTemplate("register.html", 500, res, map[string]any{
 			"err": err,
 		})
 		return
 	}
-	rt, err := jwtutil.ClaimsToJwt(refreshJwt, key.Kid, key.Rsa)
+	rt, err := jwtutil.ClaimsToJwt(refreshJwt, key.Kid, rsaKey)
 	if err != nil {
 		obj.respondWithTemplate("register.html", 500, res, map[string]any{
 			"err": err,
@@ -527,7 +564,7 @@ func (obj *acceptOidcHandler) registerHandler() http.HandlerFunc {
 			username := req.Form.Get("username")
 			password := req.Form.Get("password")
 
-			user, err := userService.AttemptUserRegistration(username, password)
+			user, err := userService.AttemptUserRegistration(ctx, username, password)
 			if errors.Is(err, users.ErrUserExists) {
 				obj.respondWithTemplate("register.html", 400, res, map[string]any{
 					"err": "user already exists",
@@ -588,7 +625,7 @@ func (obj *acceptOidcHandler) loginHandler() http.HandlerFunc {
 
 			username := req.Form.Get("username")
 			password := req.Form.Get("password")
-			user, err := userService.AttemptUserLogin(username, password)
+			user, err := userService.AttemptUserLogin(ctx, username, password)
 			if err != nil || user == nil {
 				res.WriteHeader(500)
 				return

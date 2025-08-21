@@ -219,6 +219,49 @@ func (d *DynamoDbDaoSource) GetUserStore(ctx context.Context) users.UserStore {
 	}
 }
 
+type DdbSessionStore struct {
+	ddbutil.DdbEntityMapper[session.Session]
+}
+
+// ListUserSessions implements session.SessionStore.
+func (d *DdbSessionStore) ListUserSessions(ctx context.Context, userId string) ([]*session.Session, error) {
+	scroller := &ddbutil.DepaginatedScroller[session.Session]{}
+	d.ScrollQuery(
+		ctx,
+		dynamodb.QueryInput{
+			TableName: &d.TableName,
+			ExpressionAttributeNames: map[string]string{
+				"#sk": d.SortKeyName,
+			},
+			ExpressionAttributeValues: map[string]types.AttributeValue{
+				":sk": &types.AttributeValueMemberS{Value: userId},
+			},
+			KeyConditionExpression: aws.String("#sk = :sk"),
+			IndexName:              aws.String("reverse"), // use the REVERSE index lookup
+		},
+		scroller,
+	)
+	return scroller.Results, nil
+}
+
+func (d *DdbSessionStore) LoadSession(ctx context.Context, sessionId string, userId string) (*session.Session, error) {
+	return d.Get(ctx, sessionId, userId)
+}
+
+func (d *DdbSessionStore) SaveSession(ctx context.Context, session *session.Session) error {
+	return d.Save(ctx, session)
+}
+
 func (d *DynamoDbDaoSource) GetSessionStore(ctx context.Context) session.SessionStore {
-	panic("unimplemented")
+	return &DdbSessionStore{
+		DdbEntityMapper: ddbutil.DdbEntityMapper[session.Session]{
+			Ddb:       d.ddb,
+			TableName: d.tableName("session-store"),
+			Supplier: func() *session.Session {
+				return &session.Session{}
+			},
+			PartitionKeyName: "id",
+			SortKeyName:      "userId",
+		},
+	}
 }
