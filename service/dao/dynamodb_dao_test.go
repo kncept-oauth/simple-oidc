@@ -4,11 +4,15 @@ package dao
 // x +build integration
 
 import (
+	"bytes"
 	"context"
 	"crypto/rsa"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -111,49 +115,40 @@ func RunWrappedMain(m *testing.M) {
 func InitAllTables(ctx context.Context, cfg aws.Config) {
 	// init the tables now
 	ddb := dynamodb.NewFromConfig(cfg)
-	dao := &DynamoDbDaoSource{
-		ddb:         ddb,
-		tablePrefix: "",
-	}
 
-	tablesNames := []string{}
-
-	if obj, ok := dao.GetAuthorizationCodeStore(ctx).(*DdbAuthorizationCodeStore); ok {
-		if err := ddbutil.InitializeTable(ctx, ddb, &obj.DdbEntityMapper); err != nil {
+	mappers := AllDdbEntityDetails(ctx)
+	for _, mapper := range mappers {
+		if err := ddbutil.InitializeTable(ctx, ddb, mapper); err != nil {
 			panic(err)
 		}
-		tablesNames = append(tablesNames, obj.DdbEntityMapper.TableName)
+	}
+}
+
+func AllDdbEntityDetails(ctx context.Context) []*ddbutil.DdbEntityDetails {
+	dao := &DynamoDbDaoSource{}
+	mappers := make([]*ddbutil.DdbEntityDetails, 0)
+	if obj, ok := dao.GetAuthorizationCodeStore(ctx).(*DdbAuthorizationCodeStore); ok {
+		mappers = append(mappers, &obj.DdbEntityMapper.DdbEntityDetails)
 	}
 	if obj, ok := dao.GetClientStore(ctx).(*DdbClientStore); ok {
-		if err := ddbutil.InitializeTable(ctx, ddb, &obj.DdbEntityMapper); err != nil {
-			panic(err)
-		}
-		tablesNames = append(tablesNames, obj.DdbEntityMapper.TableName)
+		mappers = append(mappers, &obj.DdbEntityMapper.DdbEntityDetails)
 	}
 	if obj, ok := dao.GetClientAuthorizationStore(ctx).(*DdbClientAuthorizationStore); ok {
-		if err := ddbutil.InitializeTable(ctx, ddb, &obj.DdbEntityMapper); err != nil {
-			panic(err)
-		}
-		tablesNames = append(tablesNames, obj.DdbEntityMapper.TableName)
+		mappers = append(mappers, &obj.DdbEntityMapper.DdbEntityDetails)
 	}
 	if obj, ok := dao.GetKeyStore(ctx).(*DdbKeyStore); ok {
-		if err := ddbutil.InitializeTable(ctx, ddb, &obj.DdbEntityMapper); err != nil {
-			panic(err)
-		}
-		tablesNames = append(tablesNames, obj.DdbEntityMapper.TableName)
+		mappers = append(mappers, &obj.DdbEntityMapper.DdbEntityDetails)
 	}
 	if obj, ok := dao.GetUserStore(ctx).(*DdbUserStore); ok {
-		if err := ddbutil.InitializeTable(ctx, ddb, &obj.DdbEntityMapper); err != nil {
-			panic(err)
-		}
-		tablesNames = append(tablesNames, obj.DdbEntityMapper.TableName)
+		mappers = append(mappers, &obj.DdbEntityMapper.DdbEntityDetails)
 	}
 	if obj, ok := dao.GetSessionStore(ctx).(*DdbSessionStore); ok {
-		if err := ddbutil.InitializeTable(ctx, ddb, &obj.DdbEntityMapper); err != nil {
-			panic(err)
-		}
-		tablesNames = append(tablesNames, obj.DdbEntityMapper.TableName)
+		mappers = append(mappers, &obj.DdbEntityMapper.DdbEntityDetails)
 	}
+	slices.SortFunc(mappers, func(a, b *ddbutil.DdbEntityDetails) int {
+		return strings.Compare(a.TableName, b.TableName)
+	})
+	return mappers
 }
 
 func TestMain(m *testing.M) {
@@ -518,6 +513,71 @@ func TestSessionStore(t *testing.T) {
 	if ses.SessionId != foundSession.SessionId || !ses.Created.Equal(foundSession.Created) {
 		fmt.Printf("session mismatch:\n%+v\n%+v\n", ses, foundSession)
 		t.Fatalf("session mismatch")
+	}
+}
+
+func TestTablesNamesMatchJson(t *testing.T) {
+	writeJson := false
+	ctx := t.Context()
+	entityMappers := AllDdbEntityDetails(ctx)
+
+	type TableJsonArray struct {
+		Tables []*ddbutil.DdbEntityDetails `json:"tables"`
+	}
+
+	jsonArray := &TableJsonArray{}
+
+	tablesFileName := "../../deploy/tables.json"
+	jsonBytes, err := os.ReadFile(tablesFileName)
+	if err != nil {
+		t.Fatalf("Failed to read file:%v", err)
+
+	}
+
+	err = json.Unmarshal(jsonBytes, jsonArray)
+	if err != nil {
+		t.Errorf("Unable to unmarshal")
+		writeJson = true
+	}
+
+	if len(entityMappers) != len(jsonArray.Tables) {
+		t.Errorf("Different number of talbes: Expected %v but got %v", len(entityMappers), len(jsonArray.Tables))
+		writeJson = true
+	}
+
+	for _, mapper := range entityMappers {
+		foundTable := false
+		for _, foundTableDetails := range jsonArray.Tables {
+			if mapper.TableName == foundTableDetails.TableName {
+				foundTable = true
+
+				if mapper.PartitionKeyName != foundTableDetails.PartitionKeyName {
+					t.Errorf("Table %v has mismatching PK details: %v %v", mapper.TableName, mapper.PartitionKeyName, foundTableDetails.PartitionKeyName)
+					writeJson = true
+				}
+				if mapper.SortKeyName != foundTableDetails.SortKeyName {
+					t.Errorf("Table %v has mismatching SK details: %v %v", mapper.TableName, mapper.SortKeyName, foundTableDetails.SortKeyName)
+					writeJson = true
+				}
+			}
+		}
+		if !foundTable {
+			t.Errorf("Did not find entry for table %v", mapper.TableName)
+			writeJson = true
+		}
+	}
+
+	if writeJson {
+		jsonArray.Tables = entityMappers
+		buf := new(bytes.Buffer)
+		enc := json.NewEncoder(buf)
+		enc.SetIndent("", "    ")
+		if err := enc.Encode(jsonArray); err != nil {
+			t.Fatalf("unable to marshal json: %v", err)
+		}
+		jsonBytes = buf.Bytes()
+		os.WriteFile(tablesFileName, jsonBytes, 0644)
+		t.Errorf("Test Failed: Json Updated")
 	}
 
 }

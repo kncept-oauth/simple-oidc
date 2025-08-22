@@ -21,15 +21,25 @@ At the moment, dependencies will be excluded (node_modules and golang vendoring)
 1) To provide a simple all in one oidc server that "does enough" to use JWT's as the auth mechanism in an application
 2) To provide a application that can easily be swapped out to different storage mechanisms
 
-# Deployment (one touch)
-Ensure that you have the `LAMBDA_HOSTNAME` env property set.
+# Deployment (managed)
+YOu may need to set the following hostnames
+  - LAMBDA_HOSTNAME
+    - the end URL that the app will be hosted on
+    - eg: simple-oidc.kncept.com
+  - REGIONS
+    - A list of all the AWS regions where the lambda will be deployed
+    - The data stack will deploy to the first region in the list
+    - eg: ap-southeast-2,us-east-1
 Run `./build.sh deploy` with valid AWS credentials.
 
 # Deployment 
 1) Ensure your environment is set up
     * AWS Credentials (for default deployment)
     * URL Mount point details (to hook up to an existing aws Route53 zone)
-2) Run the deploy script: `make deploy`
+2) npm run cdk ls
+3) npm run cdk synth
+3) npm run cdk deploy --all
+
 
 # Development
 Run main.go from the testharness project

@@ -59,12 +59,14 @@ func (d *DdbAuthorizationCodeStore) SaveAuthorizationCode(ctx context.Context, c
 func (d *DynamoDbDaoSource) GetAuthorizationCodeStore(ctx context.Context) client.AuthorizationCodeStore {
 	return &DdbAuthorizationCodeStore{
 		DdbEntityMapper: ddbutil.DdbEntityMapper[client.AuthorizationCode]{
-			Ddb:       d.ddb,
-			TableName: d.tableName("auth-codes"),
+			DdbEntityDetails: ddbutil.DdbEntityDetails{
+				TableName:        d.tableName("auth-codes"),
+				PartitionKeyName: "code",
+			},
+			Ddb: d.ddb,
 			Supplier: func() *client.AuthorizationCode {
 				return &client.AuthorizationCode{}
 			},
-			PartitionKeyName: "code",
 		},
 	}
 }
@@ -123,13 +125,15 @@ func (c *DdbClientAuthorizationStore) SaveClientAuthorization(ctx context.Contex
 func (d *DynamoDbDaoSource) GetClientAuthorizationStore(ctx context.Context) client.ClientAuthorizationStore {
 	return &DdbClientAuthorizationStore{
 		DdbEntityMapper: ddbutil.DdbEntityMapper[client.ClientAuthorization]{
-			Ddb:       d.ddb,
-			TableName: d.tableName("client-authorization"),
+			DdbEntityDetails: ddbutil.DdbEntityDetails{
+				TableName:        d.tableName("client-authorization"),
+				PartitionKeyName: "userId",
+				SortKeyName:      "clientId",
+			},
+			Ddb: d.ddb,
 			Supplier: func() *client.ClientAuthorization {
 				return &client.ClientAuthorization{}
 			},
-			PartitionKeyName: "userId",
-			SortKeyName:      "clientId",
 		},
 	}
 }
@@ -157,12 +161,14 @@ func (d *DdbClientStore) SaveClient(ctx context.Context, client *client.Client) 
 func (d *DynamoDbDaoSource) GetClientStore(ctx context.Context) client.ClientStore {
 	return &DdbClientStore{
 		DdbEntityMapper: ddbutil.DdbEntityMapper[client.Client]{
-			Ddb:       d.ddb,
-			TableName: d.tableName("clients"),
+			DdbEntityDetails: ddbutil.DdbEntityDetails{
+				TableName:        d.tableName("clients"),
+				PartitionKeyName: "clientId",
+			},
+			Ddb: d.ddb,
 			Supplier: func() *client.Client {
 				return &client.Client{}
 			},
-			PartitionKeyName: "clientId",
 		},
 	}
 }
@@ -174,12 +180,14 @@ type DdbKeyStore struct {
 func (d *DynamoDbDaoSource) GetKeyStore(ctx context.Context) keys.Keystore {
 	return &DdbKeyStore{
 		DdbEntityMapper: ddbutil.DdbEntityMapper[keys.JwkKeypair]{
-			Ddb:       d.ddb,
-			TableName: d.tableName("keys"),
+			DdbEntityDetails: ddbutil.DdbEntityDetails{
+				TableName:        d.tableName("keys"),
+				PartitionKeyName: "kid",
+			},
+			Ddb: d.ddb,
 			Supplier: func() *keys.JwkKeypair {
 				return &keys.JwkKeypair{}
 			},
-			PartitionKeyName: "kid",
 		},
 	}
 }
@@ -209,12 +217,14 @@ func (d *DdbUserStore) SaveUser(ctx context.Context, user *users.OidcUser) error
 func (d *DynamoDbDaoSource) GetUserStore(ctx context.Context) users.UserStore {
 	return &DdbUserStore{
 		DdbEntityMapper: ddbutil.DdbEntityMapper[users.OidcUser]{
-			Ddb:       d.ddb,
-			TableName: d.tableName("users"),
+			DdbEntityDetails: ddbutil.DdbEntityDetails{
+				TableName:        d.tableName("users"),
+				PartitionKeyName: "id",
+			},
+			Ddb: d.ddb,
 			Supplier: func() *users.OidcUser {
 				return &users.OidcUser{}
 			},
-			PartitionKeyName: "id",
 		},
 	}
 }
@@ -223,7 +233,6 @@ type DdbSessionStore struct {
 	ddbutil.DdbEntityMapper[session.Session]
 }
 
-// ListUserSessions implements session.SessionStore.
 func (d *DdbSessionStore) ListUserSessions(ctx context.Context, userId string) ([]*session.Session, error) {
 	scroller := &ddbutil.DepaginatedScroller[session.Session]{}
 	d.ScrollQuery(
@@ -255,13 +264,15 @@ func (d *DdbSessionStore) SaveSession(ctx context.Context, session *session.Sess
 func (d *DynamoDbDaoSource) GetSessionStore(ctx context.Context) session.SessionStore {
 	return &DdbSessionStore{
 		DdbEntityMapper: ddbutil.DdbEntityMapper[session.Session]{
-			Ddb:       d.ddb,
-			TableName: d.tableName("session-store"),
+			DdbEntityDetails: ddbutil.DdbEntityDetails{
+				TableName:        d.tableName("session-store"),
+				PartitionKeyName: "id",
+				SortKeyName:      "userId",
+			},
+			Ddb: d.ddb,
 			Supplier: func() *session.Session {
 				return &session.Session{}
 			},
-			PartitionKeyName: "id",
-			SortKeyName:      "userId",
 		},
 	}
 }

@@ -30,13 +30,17 @@ func (s *DepaginatedScroller[T]) Scroll(items []*T) bool {
 	return true
 }
 
+type DdbEntityDetails struct {
+	TableName        string `json:"tableName"`
+	PartitionKeyName string `json:"partitionKeyName"`
+	SortKeyName      string `json:"sortKeyName,omitempty"`
+}
+
 // I like this pattern.
 type DdbEntityMapper[T any] struct {
-	Ddb              *dynamodb.Client
-	TableName        string
-	Supplier         func() *T
-	PartitionKeyName string
-	SortKeyName      string
+	DdbEntityDetails
+	Ddb      *dynamodb.Client `json:"-"`
+	Supplier func() *T        `json:"-"`
 }
 
 func (d *DdbEntityMapper[T]) Get(ctx context.Context, partitionKey string, sortKey string) (*T, error) {

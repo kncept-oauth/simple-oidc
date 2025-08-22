@@ -1,0 +1,30 @@
+{
+    "tables": [
+        {
+            "tableName": "auth-codes",
+            "partitionKeyName": "code"
+        },
+        {
+            "tableName": "client-authorization",
+            "partitionKeyName": "userId",
+            "sortKeyName": "clientId"
+        },
+        {
+            "tableName": "clients",
+            "partitionKeyName": "clientId"
+        },
+        {
+            "tableName": "keys",
+            "partitionKeyName": "kid"
+        },
+        {
+            "tableName": "session-store",
+            "partitionKeyName": "id",
+            "sortKeyName": "userId"
+        },
+        {
+            "tableName": "users",
+            "partitionKeyName": "id"
+        }
+    ]
+}

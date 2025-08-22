@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
-func InitializeTable[T any](ctx context.Context, client *dynamodb.Client, tableDetails *DdbEntityMapper[T]) error {
+func InitializeTable(ctx context.Context, client *dynamodb.Client, tableDetails *DdbEntityDetails) error {
 	exists, err := TableExists(ctx, client, tableDetails.TableName)
 	if err != nil {
 		return fmt.Errorf("Unable to determine if table exists: %v", err)
@@ -44,7 +44,7 @@ func TableExists(ctx context.Context, client *dynamodb.Client, tableName string)
 	}
 	return true, nil
 }
-func CreateTable[T any](ctx context.Context, client *dynamodb.Client, tableDetails *DdbEntityMapper[T]) error {
+func CreateTable(ctx context.Context, client *dynamodb.Client, tableDetails *DdbEntityDetails) error {
 	keySchema := []types.KeySchemaElement{
 		{
 			AttributeName: &tableDetails.PartitionKeyName,
