@@ -1,4 +1,5 @@
-#!/usr/bin/env node
+import * as jsonTables from './tables.json'
+
 import 'source-map-support/register'
 import * as cdk from 'aws-cdk-lib'
 import { env } from 'process'
@@ -11,7 +12,8 @@ import * as route53 from 'aws-cdk-lib/aws-route53'
 import { matchingHostedZone } from './lib/domain-tools'
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb'
 
-import * as jsonTables from './tables.json'
+
+import { lookupAccountId } from './lib/account-tools'
 
 // the FIRST region will be where the data stack also ends up
 const regions = process.env.REGIONS || 'ap-southeast-2'
@@ -23,6 +25,7 @@ for (let i = 0; i < allRegions.length; i++) {
 async function init() {
   const lambdaHostname = env.LAMBDA_HOSTNAME || 'simple-oidc.kncept.com'
   const name = 'simple-oidc'
+  const accountId = await lookupAccountId()
   const app = new cdk.App()
 
   const dataStack = new cdk.Stack(app, `${name}-data`, {
@@ -31,6 +34,7 @@ async function init() {
     }
   })
   const tables = defineDataStack(dataStack)
+
 
   await Promise.all(allRegions.map(async region => {
     const appStack = new cdk.Stack(app, `${name}-app-${region}`, {
@@ -117,31 +121,41 @@ async function init() {
     role.addToPolicy(new iam.PolicyStatement({
       sid: 'DdbPermissions',
       actions: [
-        'dynamodb:Batch*',
+        'dynamodb:BatchGetItem',
+        'dynamodb:BatchWriteItem',
         'dynamodb:DeleteItem',
-        'dynamodb:Describe*',
-        'dynamodb:Get*',
+        'dynamodb:DescribeTable',
+        'dynamodb:GetItem',
+        'dynamodb:ListTables',
         'dynamodb:PutItem',
         'dynamodb:Query',
         'dynamodb:Scan',
         'dynamodb:UpdateItem',
-        'dynamodb:UpdateTable',
       ],
-      resources: tables.map(table => table.tableArn),
+      // resources: tables.map(table => table.tableArn),
+      resources: tables.map(table => `arn:aws:dynamodb:${region}:${accountId}:table/${table.tableName}`), // arn:aws:dynamodb:region:account-id:table/table-name
       effect: iam.Effect.ALLOW,
     }))
+    return appStack
   }))
 }
 
-function defineDataStack(dataStack: cdk.Stack): Array<dynamodb.TableV2> {
+interface TableDetails {
+  tableName: string
+  table: dynamodb.TableV2
+}
+
+
+
+function defineDataStack(dataStack: cdk.Stack): Array<TableDetails> {
   return jsonTables.tables.map((ddbTableToCreate: any) => {
     const tableName: string = ddbTableToCreate.tableName
     const partitionKeyName: string = ddbTableToCreate.partitionKeyName
-    const sortKeyName: string | undefined = ddbTableToCreate.partitionKeyName
+    const sortKeyName: string | undefined = ddbTableToCreate.sortKeyName
 
-    const secondaryIndexes: Array<dynamodb.GlobalSecondaryIndexPropsV2> = []
+    const globalSecondaryIndexes: Array<dynamodb.GlobalSecondaryIndexPropsV2> = []
     if (sortKeyName !== undefined) {
-      secondaryIndexes.push({
+      globalSecondaryIndexes.push({
         indexName: "reverse",
         partitionKey: { name: sortKeyName, type: dynamodb.AttributeType.STRING },
         sortKey: { name: partitionKeyName, type: dynamodb.AttributeType.STRING },
@@ -155,18 +169,23 @@ function defineDataStack(dataStack: cdk.Stack): Array<dynamodb.TableV2> {
       })
     }
 
-    return new dynamodb.TableV2(
-      dataStack, `table-${tableName}`, {
+    return {
       tableName,
-      partitionKey: { name: partitionKeyName, type: dynamodb.AttributeType.STRING },
-      sortKey: sortKeyName === undefined ? undefined : { name: sortKeyName, type: dynamodb.AttributeType.STRING },
-      timeToLiveAttribute: "ttl",
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      billing: dynamodb.Billing.onDemand(),
-      globalSecondaryIndexes: secondaryIndexes,
-      replicas,
+      table: new dynamodb.TableV2(
+        dataStack,
+        `table-${tableName}`,
+        {
+          tableName,
+          partitionKey: { name: partitionKeyName, type: dynamodb.AttributeType.STRING },
+          sortKey: sortKeyName === undefined ? undefined : { name: sortKeyName, type: dynamodb.AttributeType.STRING },
+          timeToLiveAttribute: "ttl",
+          removalPolicy: cdk.RemovalPolicy.DESTROY,
+          billing: dynamodb.Billing.onDemand(),
+          globalSecondaryIndexes,
+          replicas,
+        }
+      )
     }
-    )
   })
 }
 

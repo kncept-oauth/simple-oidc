@@ -28,6 +28,7 @@ prepare() {
 
 test() {
   cd service 
+  go generate gen/gen.go  
   go test ./...
   go test -tags integration ./...
   cd ..
@@ -36,27 +37,29 @@ test() {
   go test ./...
   cd ..
   
-
-  # cd deploy
-  # npm run test
   # cd ..
+  cd deploy
+  # npm run test
+  npm run cdk synth -- --all --concurrency 8
+  cd ..
 }
 
 build() {
     cd service 
-    go generate gen/gen.go  
     CGO_ENABLED=0 GOOS=linux GOARGS=amd64 go build -o bootstrap -ldflags="-s -w"
     cd ..
     
 }
 
 testharness() {
-    cd testharness && go run main.go
+    cd testharness 
+    go run main.go
+    cd ..
 }
 
 deploy() {
   cd deploy
-  npm run cdk deploy
+  npm run cdk deploy -- --all --concurrency 8
   cd ..
 }
 
