@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"net/http"
 	"os"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -32,29 +32,57 @@ func main() {
 		hostUrl = fmt.Sprintf("https://%s", hostName)
 	}
 
+	// fmt.Printf("Runmode: %s\nHostUrl: %s\n", runmode, hostUrl)
+
 	switch runmode {
 	case "aws-lambda":
 		cfg, err := config.LoadDefaultConfig(ctx)
 		if err != nil {
 			panic(err)
 		}
-
-		RunAsLambda(dao.NewDynamoDbDao(cfg, ""), hostUrl)
+		daoSource := dao.NewDynamoDbDao(cfg, "")
+		err = wrappedRunner(daoSource, hostUrl, func(handler http.Handler) error {
+			handlerAdapter := httpadapter.New(handler)
+			lambda.Start(handlerAdapter.ProxyWithContext)
+			return nil
+		})
+		if err != nil {
+			panic(err)
+		}
+	case "ecs-ssl":
+		cfg, err := config.LoadDefaultConfig(ctx)
+		if err != nil {
+			panic(err)
+		}
+		daoSource := dao.NewDynamoDbDao(cfg, "")
+		err = wrappedRunner(daoSource, hostUrl, func(handler http.Handler) error {
+			_, err := development.RunLocally(daoSource, handler)
+			return err
+		})
+		if err != nil {
+			panic(err)
+		}
 	case "dev":
-		development.RunLocally(dao.NewFilesystemDao(), hostUrl)
+		daoSource := dao.NewFilesystemDao()
+		err := wrappedRunner(daoSource, hostUrl, func(handler http.Handler) error {
+			_, err := development.RunLocally(daoSource, handler)
+			return err
+		})
+		if err != nil {
+			panic(err)
+		}
 	default:
 		panic(fmt.Errorf("unknown run mode: %v", runmode))
 	}
 }
 
-func RunAsLambda(daoSource dao.DaoSource, urlPrefix string) {
+func wrappedRunner(daoSource dao.DaoSource, hostUrl string, callback func(handler http.Handler) error) error {
 	srv, err := dispatcher.NewApplication(
 		daoSource,
-		urlPrefix,
+		hostUrl,
 	)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	handlerAdapter := httpadapter.NewV2(srv)
-	lambda.Start(handlerAdapter.ProxyWithContext)
+	return callback(srv)
 }

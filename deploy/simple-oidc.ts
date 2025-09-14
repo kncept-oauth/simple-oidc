@@ -63,6 +63,7 @@ async function init() {
     const fn = new lambda.Function(appStack, `${name}-fn `, {
       runtime: lambda.Runtime.PROVIDED_AL2023,
       functionName: `${name}-fn`,
+      description: `The Simple OIDC Application`,
       code: lambda.Code.fromAsset('../service', { exclude: ['**', '!bootstrap'] }),
       handler: 'bootstrap',
       role,
