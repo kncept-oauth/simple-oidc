@@ -65,7 +65,9 @@ func main() {
 	case "dev":
 		daoSource := dao.NewFilesystemDao()
 		err := wrappedRunner(daoSource, hostUrl, func(handler http.Handler) error {
+			done := make(chan struct{})
 			_, err := development.RunLocally(daoSource, handler)
+			<-done // will block forever
 			return err
 		})
 		if err != nil {

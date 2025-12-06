@@ -1,7 +1,11 @@
 
-* deauthorize function
+* Deauthorize function
 
-* view client details
+* View client details
+
+* Register to handle alread registered
+
+* Login to hand unregistered
 
 
 //////
@@ -24,19 +28,3 @@ https://auth0.com/docs/get-started/authentication-and-authorization-flow
 https://developer.okta.com/docs/concepts/oauth-openid/
 https://openid.net/developers/how-connect-works/
 https://openid.net/specs/openid-connect-core-1_0.html#TokenEndpoint
-
-//////
-//////
-
-/me endpoint
-
-Registration page fixup (password verification, user id taken feedback, etc)
-
-N.B. The application is meant to be pluggable.
-
-==> Use an interface for data operations
-
-- Deployment stack
-
-- JWT issue flow
-- External process tester.

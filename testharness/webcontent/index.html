@@ -71,6 +71,17 @@
         </ul>
 
         <div>Issuer: {{ .Issuer }}</div>
+
+        
+        <div class="outlined">
+            Datastore type: {{ .DatastoreType }} <br>
+            Users:<br>
+            <ul>
+            {{ range $idx, $user := .AllUsers }}
+                <li>{{ $user.Id }}</li>
+            {{ end }}
+            </ul>
+        </div>
 </body>
 
 </html>

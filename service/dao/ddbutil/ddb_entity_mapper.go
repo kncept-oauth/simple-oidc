@@ -9,6 +9,20 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
+func SimpleScrollCallback[T any](callback func(item *T) bool) ScrollCallback[T] {
+	return func(items []*T) bool {
+		processMore := true
+		i := 0
+		for processMore && i < len(items) {
+			processMore = callback(items[i])
+			i++
+		}
+		return processMore
+	}
+}
+
+type ScrollCallback[T any] func(items []*T) (processMore bool)
+
 type SimpleScrollerFunc[T any] func(items []*T) (processMore bool)
 type SimpleScroller[T any] interface {
 	Scroll(items []*T) (processMore bool)
@@ -97,12 +111,12 @@ func (d *DdbEntityMapper[T]) Scan(ctx context.Context) ([]*T, error) {
 	allResults := &DepaginatedScroller[T]{}
 	err := d.ScrollScan(ctx, dynamodb.ScanInput{
 		TableName: &d.TableName,
-	}, allResults)
+	}, allResults.Scroll)
 	return allResults.Results, err
 }
 
 // input is a COPY because the value is modified
-func (d *DdbEntityMapper[T]) ScrollScan(ctx context.Context, input dynamodb.ScanInput, scroller SimpleScroller[T]) error {
+func (d *DdbEntityMapper[T]) ScrollScan(ctx context.Context, input dynamodb.ScanInput, callback ScrollCallback[T]) error {
 	processMore := false
 	scanRes, err := d.Ddb.Scan(ctx, &input)
 	if err != nil {
@@ -118,7 +132,7 @@ func (d *DdbEntityMapper[T]) ScrollScan(ctx context.Context, input dynamodb.Scan
 			}
 			items = append(items, val)
 		}
-		processMore = scroller.Scroll(items)
+		processMore = callback(items)
 	}
 	for processMore && scanRes.LastEvaluatedKey != nil {
 		scanRes, err = d.Ddb.Scan(ctx, &input)
@@ -136,12 +150,12 @@ func (d *DdbEntityMapper[T]) ScrollScan(ctx context.Context, input dynamodb.Scan
 			items = append(items, val)
 		}
 		input.ExclusiveStartKey = scanRes.LastEvaluatedKey
-		processMore = scroller.Scroll(items)
+		processMore = callback(items)
 	}
 	return nil
 }
 
-func (d *DdbEntityMapper[T]) ScrollQuery(ctx context.Context, input dynamodb.QueryInput, scroller SimpleScroller[T]) error {
+func (d *DdbEntityMapper[T]) ScrollQuery(ctx context.Context, input dynamodb.QueryInput, callback ScrollCallback[T]) error {
 	processMore := false
 	scanRes, err := d.Ddb.Query(ctx, &input)
 	if err != nil {
@@ -157,7 +171,7 @@ func (d *DdbEntityMapper[T]) ScrollQuery(ctx context.Context, input dynamodb.Que
 			}
 			items = append(items, val)
 		}
-		processMore = scroller.Scroll(items)
+		processMore = callback(items)
 	}
 	for processMore && scanRes.LastEvaluatedKey != nil {
 		scanRes, err = d.Ddb.Query(ctx, &input)
@@ -175,7 +189,7 @@ func (d *DdbEntityMapper[T]) ScrollQuery(ctx context.Context, input dynamodb.Que
 			items = append(items, val)
 		}
 		input.ExclusiveStartKey = scanRes.LastEvaluatedKey
-		processMore = scroller.Scroll(items)
+		processMore = callback(items)
 	}
 	return nil
 }

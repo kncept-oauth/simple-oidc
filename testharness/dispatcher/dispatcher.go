@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kncept-oauth/simple-oidc/service/client"
 	"github.com/kncept-oauth/simple-oidc/service/dao"
+	"github.com/kncept-oauth/simple-oidc/service/users"
 	"github.com/kncept-oauth/simple-oidc/testharness/webcontent"
 
 	"github.com/gofiber/fiber/v2"
@@ -88,6 +89,18 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 			bind["LoggedIn"] = true
 			bind["IdToken"] = idToken
 		}
+
+		// bind // users
+		userStore := daoSource.GetUserStore(ctx)
+		allUsers := make([]*users.OidcUser, 0)
+		userStore.EnumerateUsers(ctx, func(user *users.OidcUser) bool {
+			allUsers = append(allUsers, user)
+			return true
+		})
+		bind["AllUsers"] = allUsers
+
+		bind["DatastoreType"] = daoSource.GetDaoSourceDescription()
+
 		return c.Render("index", bind)
 	})
 

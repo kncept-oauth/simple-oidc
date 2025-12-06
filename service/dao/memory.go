@@ -25,6 +25,10 @@ func NewMemoryDao() DaoSource {
 	return &MemoryDao{}
 }
 
+func (obj *MemoryDao) GetDaoSourceDescription() string {
+	return "Memory Dao"
+}
+
 func (obj *MemoryDao) GetClientStore(ctx context.Context) client.ClientStore {
 	return obj
 }
@@ -116,6 +120,12 @@ func (obj *MemoryDao) GetUser(ctx context.Context, id string) (*users.OidcUser, 
 }
 func (obj *MemoryDao) SaveUser(ctx context.Context, user *users.OidcUser) error {
 	obj.users.Store(user.Id, user)
+	return nil
+}
+func (obj *MemoryDao) EnumerateUsers(ctx context.Context, callback func(user *users.OidcUser) bool) error {
+	obj.users.Range(func(key, value any) bool {
+		return callback(value.(*users.OidcUser))
+	})
 	return nil
 }
 

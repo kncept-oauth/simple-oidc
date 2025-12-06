@@ -62,6 +62,10 @@ func listDir(rootDir string) ([]string, error) {
 	return dirs, nil
 }
 
+func (obj *FilesystemDao) GetDaoSourceDescription() string {
+	return fmt.Sprintf("FilesystemDao: %s", obj.RootDir)
+}
+
 func (obj *FilesystemDao) GetKeyStore(ctx context.Context) keys.Keystore {
 	os.Mkdir(path.Join(obj.RootDir, "keys"), 0700)
 	return &fsKeyStore{
@@ -261,6 +265,22 @@ func (c *fsUserStore) GetUser(ctx context.Context, id string) (*users.OidcUser, 
 }
 func (c *fsUserStore) SaveUser(ctx context.Context, user *users.OidcUser) error {
 	return writeJson(c.RootDir, user.Id, user)
+}
+func (c *fsUserStore) EnumerateUsers(ctx context.Context, callback func(user *users.OidcUser) bool) error {
+	ids, err := listDir(c.RootDir)
+	if err != nil {
+		return err
+	}
+	for _, id := range ids {
+		user, err := c.GetUser(ctx, id)
+		if err != nil {
+			return err
+		}
+		if !callback(user) {
+			return nil
+		}
+	}
+	return nil
 }
 
 func (c *fsSessionStore) SaveSession(ctx context.Context, session *session.Session) error {

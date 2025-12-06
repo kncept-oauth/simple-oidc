@@ -10,6 +10,7 @@ import (
 )
 
 type DaoSource interface {
+	GetDaoSourceDescription() string                                                 // name, type, etc
 	GetClientStore(ctx context.Context) client.ClientStore                           // clients
 	GetClientAuthorizationStore(ctx context.Context) client.ClientAuthorizationStore // client sessions
 	GetAuthorizationCodeStore(ctx context.Context) client.AuthorizationCodeStore     // user-client authorizations

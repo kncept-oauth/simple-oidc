@@ -17,6 +17,8 @@ import (
 type UserStore interface {
 	GetUser(ctx context.Context, id string) (*OidcUser, error)
 	SaveUser(ctx context.Context, user *OidcUser) error
+
+	EnumerateUsers(ctx context.Context, callback func(user *OidcUser) bool) error
 }
 
 type OidcUser struct {

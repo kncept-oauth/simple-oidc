@@ -28,6 +28,10 @@ func NewDynamoDbDao(cfg aws.Config, tablePrefix string) DaoSource {
 	}
 }
 
+func (d *DynamoDbDaoSource) GetDaoSourceDescription() string {
+	return "DynamoDbDaoSource"
+}
+
 // called to initialize the DdbEntityMapper
 func (d *DynamoDbDaoSource) tableName(name string) string {
 	if d.tablePrefix == "" {
@@ -89,7 +93,7 @@ func (c *DdbClientAuthorizationStore) ClientAuthorizationsByClient(ctx context.C
 			KeyConditionExpression: aws.String("#sk = :sk"),
 			IndexName:              aws.String("reverse"), // use the REVERSE index lookup
 		},
-		scroller,
+		scroller.Scroll,
 	)
 }
 
@@ -106,7 +110,7 @@ func (c *DdbClientAuthorizationStore) ClientAuthorizationsByUser(ctx context.Con
 			},
 			KeyConditionExpression: aws.String("#pk = :pk"),
 		},
-		scroller,
+		scroller.Scroll,
 	)
 }
 
@@ -214,6 +218,13 @@ func (d *DdbUserStore) SaveUser(ctx context.Context, user *users.OidcUser) error
 	return d.Save(ctx, user)
 }
 
+func (d *DdbUserStore) EnumerateUsers(ctx context.Context, callback func(user *users.OidcUser) bool) error {
+	return d.ScrollScan(ctx, dynamodb.ScanInput{
+		TableName: &d.TableName,
+	}, ddbutil.SimpleScrollCallback(callback),
+	)
+}
+
 func (d *DynamoDbDaoSource) GetUserStore(ctx context.Context) users.UserStore {
 	return &DdbUserStore{
 		DdbEntityMapper: ddbutil.DdbEntityMapper[users.OidcUser]{
@@ -248,7 +259,7 @@ func (d *DdbSessionStore) ListUserSessions(ctx context.Context, userId string) (
 			KeyConditionExpression: aws.String("#sk = :sk"),
 			IndexName:              aws.String("reverse"), // use the REVERSE index lookup
 		},
-		scroller,
+		scroller.Scroll,
 	)
 	return scroller.Results, nil
 }

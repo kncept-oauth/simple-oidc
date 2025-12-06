@@ -15,6 +15,7 @@ import (
 	"github.com/kncept-oauth/simple-oidc/service/dao"
 	servicedao "github.com/kncept-oauth/simple-oidc/service/dao"
 	"github.com/kncept-oauth/simple-oidc/service/development"
+	servicedispatcher "github.com/kncept-oauth/simple-oidc/service/dispatcher"
 	"github.com/kncept-oauth/simple-oidc/testharness/dispatcher"
 )
 
@@ -24,23 +25,23 @@ func main() {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	// datastore := servicedao.NewMemoryDao()
-	datastore := servicedao.NewFilesystemDao()
 
-	// run a the application, with access to the underlying datastore
-	// appPort := "8080"
-	// handler, err := servicedispatcher.NewApplication(datastore)
-	// if err != nil {
-	// panic(err)
-	// }
-	// server := http.Server{Addr: ":" + appPort, Handler: handler}
+	daoSource := servicedao.NewFilesystemDao()
+	srv, err := servicedispatcher.NewApplication(
+		daoSource,
+		"https://localhost:8443",
+	)
+	if err != nil {
+		panic(err)
+	}
 
-	appServer, err := development.RunLocally(datastore, "https://localhost:8443")
+	appServer, err := development.RunLocally(daoSource, srv)
 	if err != nil {
 		panic(err)
 	}
 
 	// var app *fiber.App
-	app, err := RunAppAsHttps(datastore)
+	app, err := RunAppAsHttps(daoSource)
 	if err != nil {
 		panic(err)
 	}
@@ -68,22 +69,22 @@ func RunAppAsHttps(daoSource dao.DaoSource) (*fiber.App, error) {
 	// TLS Certificates: generate if absent
 	generateCerts := false
 	var pkcs8PrivateKey []byte
-	x509Cert, err := os.ReadFile("server.crt")
+	x509Cert, err := os.ReadFile("../testharness/server.crt")
 	if err != nil || len(x509Cert) == 0 {
 		generateCerts = true
 	}
 
 	if !generateCerts {
-		pkcs8PrivateKey, err = os.ReadFile("server.key")
+		pkcs8PrivateKey, err = os.ReadFile("../testharness/server.key")
 		generateCerts = err != nil || len(pkcs8PrivateKey) == 0
 	}
 	if generateCerts {
 		x509Cert, pkcs8PrivateKey, err = crypto.GenerateTlsCertificate("localhost", crypto.RSA2048)
 		if err == nil {
-			err = os.WriteFile("server.crt", x509Cert, 0644)
+			err = os.WriteFile("../testharness/server.crt", x509Cert, 0644)
 		}
 		if err == nil {
-			err = os.WriteFile("server.key", pkcs8PrivateKey, 0644)
+			err = os.WriteFile("../testharness/server.key", pkcs8PrivateKey, 0644)
 		}
 	}
 	if err != nil {

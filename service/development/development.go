@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"sync"
 
 	"github.com/kncept-oauth/simple-oidc/service/crypto"
 	"github.com/kncept-oauth/simple-oidc/service/dao"
@@ -13,29 +12,27 @@ import (
 
 // runs 'ListenAndServeTLS' in a goroutine
 func RunLocally(daoSource dao.DaoSource, handler http.Handler) (*http.Server, error) {
-	wg := sync.WaitGroup{}
-
 	appPort := "8443"
 
 	// TLS Certificates: generate if absent
 	generateCerts := false
 	var x509Cert, pkcs8PrivateKey []byte
 	var err error
-	x509Cert, err = os.ReadFile("server.crt")
+	x509Cert, err = os.ReadFile("../service/server.crt")
 	if err != nil || len(x509Cert) == 0 {
 		generateCerts = true
 	}
 	if !generateCerts {
-		pkcs8PrivateKey, err = os.ReadFile("server.key")
+		pkcs8PrivateKey, err = os.ReadFile("../service/server.key")
 		generateCerts = err != nil || len(pkcs8PrivateKey) == 0
 	}
 	if generateCerts {
 		x509Cert, pkcs8PrivateKey, err = crypto.GenerateTlsCertificate("localhost", crypto.RSA2048)
 		if err == nil {
-			err = os.WriteFile("server.crt", x509Cert, 0644)
+			err = os.WriteFile("../service/server.crt", x509Cert, 0644)
 		}
 		if err == nil {
-			err = os.WriteFile("server.key", pkcs8PrivateKey, 0644)
+			err = os.WriteFile("../service/server.key", pkcs8PrivateKey, 0644)
 		}
 	}
 	if err != nil {
@@ -59,7 +56,6 @@ func RunLocally(daoSource dao.DaoSource, handler http.Handler) (*http.Server, er
 		MaxHeaderBytes: 4096 * 4,
 	}
 
-	wg.Add(1)
 	go func() {
 		fmt.Printf("Starting App on https://localhost:%s/\n", appPort)
 		if err := server.ListenAndServeTLS("", ""); err != nil {
@@ -67,10 +63,8 @@ func RunLocally(daoSource dao.DaoSource, handler http.Handler) (*http.Server, er
 				panic(err)
 			}
 		}
-		wg.Done()
 		fmt.Printf("App Shutdown\n")
 	}()
 
-	wg.Wait()
 	return server, nil
 }
