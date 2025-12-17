@@ -24,20 +24,17 @@ const staticClientId = "static-client-id"
 
 func NewApplication(daoSource dao.DaoSource) *fiber.App {
 	ctx := context.Background()
-
 	viewEngine := html.NewFileSystem(http.FS(webcontent.Views), ".html")
 	viewEngine.AddFunc("Clients", func() []*client.Client {
 		clients, _ := daoSource.GetClientStore(ctx).ListClients(ctx)
 		return clients
 	})
-
 	app := fiber.New(
 		fiber.Config{
 			Views:          viewEngine,
 			ReadBufferSize: 4096 * 4,
 		},
 	)
-
 	staticClient, err := daoSource.GetClientStore(ctx).GetClient(ctx, staticClientId)
 	if err != nil {
 		panic(err)
@@ -98,9 +95,7 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 			return true
 		})
 		bind["AllUsers"] = allUsers
-
 		bind["DatastoreType"] = daoSource.GetDaoSourceDescription()
-
 		return c.Render("index", bind)
 	})
 

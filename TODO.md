@@ -1,7 +1,5 @@
-
-* Deauthorize function
-
 * View client details
+* --> "client signup details"
 
 * Register to handle alread registered
 

@@ -38,7 +38,7 @@ func NewApplication(daoSource dao.DaoSource, urlPrefix string) (http.HandlerFunc
 	// serveMux.Handle("/header.js", acceptOidcHandler.respondWithStaticFile("header.js", "application/javascript", 200))
 	serveMux.Handle("/confirm", acceptOidcHandler.confirmLogin())
 
-	// serveMux.Handle("/deauthorize", acceptOidcHandler.deauthClient())
+	serveMux.Handle("/deauthorize/", acceptOidcHandler.deauthClientHandler())
 
 	server, err := api.NewServer(
 		&oapiDispatcher{

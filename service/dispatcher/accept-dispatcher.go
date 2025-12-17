@@ -653,3 +653,43 @@ func (obj *acceptOidcHandler) logoutHandler() http.HandlerFunc {
 		http.Redirect(w, r, "/", http.StatusFound)
 	}
 }
+
+func (obj *acceptOidcHandler) deauthClientHandler() http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		// fmt.Printf("snippetHandler req.RequestURI: %v\n", 1req.RequestURI)
+		clientId := strings.TrimSpace(strings.TrimPrefix(req.RequestURI, "/deauthorize/"))
+		if clientId == "" {
+			res.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		userId := obj.userId(req)
+		if userId == "" {
+			res.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		ctx := req.Context()
+		scroller := &ddbutil.DepaginatedScroller[client.ClientAuthorization]{}
+		err := obj.daoSource.GetClientAuthorizationStore(ctx).ClientAuthorizationsByUser(ctx, userId, scroller)
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			res.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		for _, authorizedClient := range scroller.Results {
+			if authorizedClient.ClientId == clientId {
+				err = obj.daoSource.GetClientAuthorizationStore(ctx).DeleteClientAuthorization(ctx, userId, clientId)
+				if err != nil {
+					fmt.Printf("%v\n", err)
+					res.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+
+				// postback?!?
+				res.Header().Add("Location", "/me")
+				res.WriteHeader(http.StatusFound)
+				return
+			}
+		}
+		res.WriteHeader(http.StatusNotFound)
+	}
+}
