@@ -50,3 +50,8 @@ The provided dockerfiles should provide an adequate development environment.
 
 # Usage or deployed service
 1) start off with an authorize reqeust!
+
+
+# JS/CSS Versions:
+htmx  v2.0.6
+bulma v1.0.4

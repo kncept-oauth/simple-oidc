@@ -59,7 +59,7 @@ func NewApplication(daoSource dao.DaoSource, urlPrefix string) (http.HandlerFunc
 				return
 			}
 			if strings.HasSuffix(r.URL.Path, ".css") {
-				acceptOidcHandler.respondWithStaticFile(r.URL.Path, "test/css", 200)(w, r)
+				acceptOidcHandler.respondWithStaticFile(r.URL.Path, "text/css", 200)(w, r)
 				return
 			}
 

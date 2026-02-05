@@ -1,9 +1,11 @@
+<!DOCTYPE html>
 <html>
     {{ template "header.snippet" (Wrap "Title" "Simple OIDC Login") }}
     <body>
-        <h1>Simple OIDC</h1>
+        <section class="section">
+        <h1 class="title is-1">Simple OIDC</h1>
         <p>Welcome to Simple Oidc</p>
-        <p>Please log in to contiume</p>
+        <p>Please log in to continue</p>
         <p>
             Note, this is logging into Simple OIDC, you will be able to choose 
             if you want to authorize any providers or not on the next screen.
@@ -11,7 +13,8 @@
         <form action="/login" method="post">
             <div>Username: <input type="text" name="username"></div>
             <div>Password: <input type="password" name="password"></div>
-            <div><input type="submit" value="Login"></div>
+            <div><input class="button is-primary" type="submit" value="Login"></div>
         </form>
+        </section>
     </body>
 </html>
