@@ -27,21 +27,23 @@ func main() {
 	// datastore := servicedao.NewMemoryDao()
 
 	daoSource := servicedao.NewFilesystemDao()
-	srv, err := servicedispatcher.NewApplication(
+	devModeLifeFilesystemBase := "../service"
+	serviceApp, err := servicedispatcher.NewApplication(
 		daoSource,
 		"https://localhost:8443",
+		&devModeLifeFilesystemBase,
 	)
 	if err != nil {
 		panic(err)
 	}
 
-	appServer, err := development.RunLocally(daoSource, srv)
+	serviceServer, err := development.RunLocally(daoSource, serviceApp)
 	if err != nil {
 		panic(err)
 	}
 
 	// var app *fiber.App
-	app, err := RunAppAsHttps(daoSource)
+	testHarnessApp, err := RunAppAsHttps(daoSource)
 	if err != nil {
 		panic(err)
 	}
@@ -53,8 +55,8 @@ func main() {
 		<-shutdownChan
 		wg.Done()
 		fmt.Printf("Shutting down\n")
-		app.Shutdown()
-		appServer.Shutdown(context.Background())
+		testHarnessApp.Shutdown()
+		serviceServer.Shutdown(context.Background())
 	}()
 
 	wg.Wait()

@@ -17,13 +17,20 @@ const CurrentOperationNameCookieName = "so-op"
 const LoginJwtCookieName = "so-jwt" // contains the jwt
 const LoginRefreshTokenCookieName = "so-ts"
 
-func NewApplication(daoSource dao.DaoSource, urlPrefix string) (http.HandlerFunc, error) {
+// optional config options
+
+func NewApplication(
+	daoSource dao.DaoSource,
+	urlPrefix string,
+	devModeLifeFilesystemBase *string,
+) (http.HandlerFunc, error) {
 	urlPrefix = strings.TrimSuffix(urlPrefix, "/")
 	serveMux := http.NewServeMux()
 
 	acceptOidcHandler := acceptOidcHandler{
-		urlPrefix: urlPrefix,
-		daoSource: daoSource,
+		urlPrefix:                 urlPrefix,
+		daoSource:                 daoSource,
+		devModeLifeFilesystemBase: devModeLifeFilesystemBase,
 	}
 
 	serveMux.Handle("/snippet/", acceptOidcHandler.snippetHandler())

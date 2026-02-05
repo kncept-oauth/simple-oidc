@@ -28,6 +28,7 @@ prepare() {
 
 test() {
   cd service 
+  
   go generate gen/gen.go  
   go test ./...
   go test -tags integration ./...

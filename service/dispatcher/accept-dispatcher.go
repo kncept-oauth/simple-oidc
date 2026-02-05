@@ -29,7 +29,9 @@ type acceptOidcHandler struct {
 	daoSource dao.DaoSource
 	urlPrefix string
 	mu        sync.Mutex
-	tmpl      *template.Template
+
+	devModeLifeFilesystemBase *string
+	tmpl                      *template.Template
 }
 
 func (obj *acceptOidcHandler) myAccountHandler() http.HandlerFunc {
@@ -413,12 +415,36 @@ func (obj *acceptOidcHandler) templates() *template.Template {
 		},
 	}
 	templ = templ.Funcs(f)
-	templ, err := templ.ParseFS(webcontent.Fs, "*.html", "snippet/*.snippet")
-	if err != nil {
-		panic(err)
+	if obj.devModeLifeFilesystemBase != nil {
+		foundFiles := make([]string, 0, 0)
+		snippets, err := os.ReadDir(fmt.Sprintf("%s/webcontent", *obj.devModeLifeFilesystemBase))
+		for _, snippet := range snippets {
+			if strings.HasSuffix(snippet.Name(), ".html") {
+				foundFiles = append(foundFiles, fmt.Sprintf("%s/webcontent/%s", *obj.devModeLifeFilesystemBase, snippet.Name()))
+			}
+		}
+		snippets, err = os.ReadDir(fmt.Sprintf("%s/webcontent/snippet", *obj.devModeLifeFilesystemBase))
+		for _, snippet := range snippets {
+			if strings.HasSuffix(snippet.Name(), ".snippet") {
+				foundFiles = append(foundFiles, fmt.Sprintf("%s/webcontent/snippet/%s", *obj.devModeLifeFilesystemBase, snippet.Name()))
+			}
+		}
+
+		templ, err := templ.ParseFiles(foundFiles...)
+		// templ, err := templ.ParseGlob("*.html", "snippet/*.snippet")
+		if err != nil {
+			panic(err)
+		}
+		// do not cache (!!), force a re-read every time
+		return templ
+	} else {
+		templ, err := templ.ParseFS(webcontent.Fs, "*.html", "snippet/*.snippet")
+		if err != nil {
+			panic(err)
+		}
+		obj.tmpl = templ
 	}
 
-	obj.tmpl = templ
 	return templ
 }
 
@@ -440,6 +466,29 @@ func (obj *acceptOidcHandler) respondWithStaticFile(filename string, contentType
 			res.WriteHeader(http.StatusNotFound)
 			return
 		}
+
+		// dev mode - load from filesystem
+		if obj.devModeLifeFilesystemBase != nil {
+			file, err := os.Open(fmt.Sprintf("%s/webcontent/static%s", *obj.devModeLifeFilesystemBase, filename))
+			if err == nil {
+				fileContent, err := io.ReadAll(file)
+				if err == nil {
+					if contentType != "" {
+						res.Header().Add("Content-Type", contentType)
+					}
+					res.WriteHeader(statusCode)
+					res.Write(fileContent)
+					return
+				}
+			}
+			if errors.Is(err, os.ErrNotExist) {
+				res.WriteHeader(http.StatusNotFound)
+			} else {
+				res.WriteHeader(http.StatusInternalServerError)
+			}
+			return
+		}
+
 		file, err := webcontent.Fs.Open(fmt.Sprintf("static%v", filename))
 		if err == nil {
 			fileContent, err := io.ReadAll(file)

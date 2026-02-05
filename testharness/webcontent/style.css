@@ -1,5 +1,16 @@
 
-.outlined {
-    border: 1px solid black;
+body {
+  background-color: black;
+  color:  white;
+}
 
+a:link, a:visited {
+    color: lightblue;
+}
+a:hover {
+    color: lightcoral;
+}
+
+.outlined {
+    border: 1px solid yellowgreen;
 }

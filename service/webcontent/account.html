@@ -3,12 +3,15 @@
 {{ template "header.snippet" (Wrap "Title" "Simple OIDC") }}
 
 <body>
-    <h1>Simple OIDC</h1>
+    <section class="section">
+    <h1 class="title is-1">Simple OIDC</h1>
     <p>Account Management</p>
 
     <div class="ClientAuthorizations">
     {{ if gt (len .ClientAuthorizations) 0 }}
-    <p>You are currently authorized with the following clients</p>
+    <p>You are currently authorized with the following clients:</p>
+    <br/>
+    
     {{ range $ca := .ClientAuthorizations }}
     {{ template "client_authorization_details.snippet" $ca }}
     <br/>
@@ -18,8 +21,9 @@
     {{ end }}
     </div>
 
-    <p><a href="/logout">Logout</a></p>
+    <p><a class="button is-primary" href="/logout">Logout</a></p>
 
+    </section>
 </body>
 
 </html>

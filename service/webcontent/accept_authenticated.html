@@ -3,7 +3,8 @@
 {{ template "header.snippet" (Wrap "Title" "Simple OIDC") }}
 
 <body>
-    <h1>Simple OIDC</h1>
+    <section class="section">
+    <h1 class="title is-1">Simple OIDC</h1>
 
     {{/*
     Client id is: {{.Params.ClientId}} <br/>
@@ -35,9 +36,9 @@
     </div>
     */}}
 
+    <a class="button is-danger" href="/logout">Logout</a> <a class="button is-primary" href="/confirm">Confirm Login</a>
 
-    <p><a href="/confirm">Confirm Login</a></p>
-    <p><a href="/logout">Logout</a></p>
+    </section>
 </body>
 
 </html>

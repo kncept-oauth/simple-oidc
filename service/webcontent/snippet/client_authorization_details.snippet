@@ -1,5 +1,7 @@
 <div>
-    ClientId: {{ .ClientId }} (todo: client name -> hyperlink) <br/>
+    ClientId: {{ .ClientId }}<br/>
+    
     LastRefreshed        {{ time .LastRefreshedAt "since" }} <br/>
-    <a href="/deauthorize/{{ .ClientId }}">(deauthorize)</a> <br/>
+    <a class="button is-danger" href="/deauthorize/{{ .ClientId }}">(deauthorize)</a>
+    <a class="button is-link" href="/client/{{ .ClientId }}">(TODO: client name -> hyperlink)</a><br/>
 <div>

@@ -82,6 +82,7 @@ func wrappedRunner(daoSource dao.DaoSource, hostUrl string, callback func(handle
 	srv, err := dispatcher.NewApplication(
 		daoSource,
 		hostUrl,
+		nil,
 	)
 	if err != nil {
 		return err
