@@ -1,9 +1,10 @@
 * View client details
+  - need a client name, and perhaps a short info blurb AS A MINIMUM
 * --> "client signup details"
 
 * Register to handle alread registered
 
-* Login to hand unregistered
+* Login to handle unregistered
 
 
 //////
