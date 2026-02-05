@@ -59,6 +59,9 @@ testharness() {
 }
 
 deploy() {
+  if [ ! -f "service/bootstrap" ]; then
+    (build)
+  fi
   cd deploy
   npm run cdk deploy -- --all --concurrency 8
   cd ..
