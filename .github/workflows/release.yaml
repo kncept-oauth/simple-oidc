@@ -18,6 +18,9 @@ jobs:
         with:
           go-version-file: service/go.mod
           cache-dependency-path: service/go.sum
+      - name: Run npm ci
+        run: npm ci
+        working-directory: deploy
       - name: Run Test
         run: ./build.sh build deploy
         env:
