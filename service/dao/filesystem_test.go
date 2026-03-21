@@ -10,5 +10,5 @@ func TestIsDaoSource(t *testing.T) {
 func assertIsDaoSource(receiver DaoSource) {}
 
 func TestNew(t *testing.T) {
-	NewFilesystemDao()
+	NewDefaultFilesystemDao()
 }

@@ -68,7 +68,7 @@ func main() {
 			panic(err)
 		}
 	case "dev":
-		daoSource := dao.NewFilesystemDao()
+		daoSource := dao.NewDefaultFilesystemDao()
 		err := wrappedRunner(daoSource, hostUrl, func(handler http.Handler) error {
 			done := make(chan struct{})
 			_, err := development.RunLocally(daoSource, handler)

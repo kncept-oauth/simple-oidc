@@ -26,7 +26,7 @@ func main() {
 
 	// datastore := servicedao.NewMemoryDao()
 
-	daoSource := servicedao.NewFilesystemDao()
+	daoSource := servicedao.NewDefaultFilesystemDao()
 	devModeLifeFilesystemBase := "../service"
 	serviceApp, err := servicedispatcher.NewApplication(
 		daoSource,

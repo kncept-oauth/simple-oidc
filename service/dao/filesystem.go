@@ -116,18 +116,22 @@ func RootDirFromExePath() (string, error) {
 	}
 	return filepath.Dir(ex), nil
 }
+
 func RootDirFromWorkDir() (string, error) {
 	return os.Getwd()
 }
 
-func NewFilesystemDao() DaoSource {
+func NewDefaultFilesystemDao() DaoSource {
 	workDir, err := RootDirFromWorkDir()
 	if err != nil {
 		panic(err)
 	}
 	workDir = path.Join(workDir, ".data")
 
-	os.Mkdir(workDir, 0700)
+	os.Mkdir(workDir, 0600)
+	return NewFilesystemDao(workDir)
+}
+func NewFilesystemDao(workDir string) DaoSource {
 	return &FilesystemDao{
 		RootDir: workDir,
 	}
