@@ -5,34 +5,42 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/kncept-oauth/simple-oidc/service/crypto"
 	"github.com/kncept-oauth/simple-oidc/service/dao"
 )
 
 // runs 'ListenAndServeTLS' in a goroutine
-func RunLocally(daoSource dao.DaoSource, handler http.Handler) (*http.Server, error) {
+func RunLocally(daoSource dao.DaoSource, handler http.Handler, certificateDirectory string) (*http.Server, error) {
 	appPort := "8443"
+
+	if strings.HasSuffix(certificateDirectory, "/") {
+		certificateDirectory = certificateDirectory[0 : len(certificateDirectory)-1]
+	}
+
+	crtFilePath := fmt.Sprintf("%s/server.crt", certificateDirectory)
+	serverKeyPath := fmt.Sprintf("%s/server.key", certificateDirectory)
 
 	// TLS Certificates: generate if absent
 	generateCerts := false
 	var x509Cert, pkcs8PrivateKey []byte
 	var err error
-	x509Cert, err = os.ReadFile("../service/server.crt")
+	x509Cert, err = os.ReadFile(crtFilePath)
 	if err != nil || len(x509Cert) == 0 {
 		generateCerts = true
 	}
 	if !generateCerts {
-		pkcs8PrivateKey, err = os.ReadFile("../service/server.key")
+		pkcs8PrivateKey, err = os.ReadFile(serverKeyPath)
 		generateCerts = err != nil || len(pkcs8PrivateKey) == 0
 	}
 	if generateCerts {
 		x509Cert, pkcs8PrivateKey, err = crypto.GenerateTlsCertificate("localhost", crypto.RSA2048)
 		if err == nil {
-			err = os.WriteFile("../service/server.crt", x509Cert, 0644)
+			err = os.WriteFile(crtFilePath, x509Cert, 0644)
 		}
 		if err == nil {
-			err = os.WriteFile("../service/server.key", pkcs8PrivateKey, 0644)
+			err = os.WriteFile(serverKeyPath, pkcs8PrivateKey, 0644)
 		}
 	}
 	if err != nil {

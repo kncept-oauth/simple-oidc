@@ -22,7 +22,7 @@ const LoginRefreshTokenCookieName = "so-ts"
 func NewApplication(
 	daoSource dao.DaoSource,
 	urlPrefix string,
-	devModeLifeFilesystemBase *string,
+	devModeLiveFilesystemBase *string,
 ) (http.HandlerFunc, error) {
 	urlPrefix = strings.TrimSuffix(urlPrefix, "/")
 	serveMux := http.NewServeMux()
@@ -30,7 +30,7 @@ func NewApplication(
 	acceptOidcHandler := acceptOidcHandler{
 		urlPrefix:                 urlPrefix,
 		daoSource:                 daoSource,
-		devModeLifeFilesystemBase: devModeLifeFilesystemBase,
+		devModeLiveFilesystemBase: devModeLiveFilesystemBase,
 	}
 
 	serveMux.Handle("/snippet/", acceptOidcHandler.snippetHandler())

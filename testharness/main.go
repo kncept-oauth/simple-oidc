@@ -27,17 +27,17 @@ func main() {
 	// datastore := servicedao.NewMemoryDao()
 
 	daoSource := servicedao.NewDefaultFilesystemDao()
-	devModeLifeFilesystemBase := "../service"
+	devModeLiveFilesystemBase := "../service"
 	serviceApp, err := servicedispatcher.NewApplication(
 		daoSource,
 		"https://localhost:8443",
-		&devModeLifeFilesystemBase,
+		&devModeLiveFilesystemBase,
 	)
 	if err != nil {
 		panic(err)
 	}
 
-	serviceServer, err := development.RunLocally(daoSource, serviceApp)
+	serviceServer, err := development.RunLocally(daoSource, serviceApp, "../service")
 	if err != nil {
 		panic(err)
 	}

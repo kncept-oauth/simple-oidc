@@ -61,7 +61,7 @@ func main() {
 		}
 		daoSource := dao.NewDynamoDbDao(cfg, "")
 		err = wrappedRunner(daoSource, hostUrl, func(handler http.Handler) error {
-			_, err := development.RunLocally(daoSource, handler)
+			_, err := development.RunLocally(daoSource, handler, "../service")
 			return err
 		})
 		if err != nil {
@@ -71,7 +71,7 @@ func main() {
 		daoSource := dao.NewDefaultFilesystemDao()
 		err := wrappedRunner(daoSource, hostUrl, func(handler http.Handler) error {
 			done := make(chan struct{})
-			_, err := development.RunLocally(daoSource, handler)
+			_, err := development.RunLocally(daoSource, handler, "../service")
 			<-done // will block forever
 			return err
 		})

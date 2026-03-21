@@ -30,7 +30,7 @@ type acceptOidcHandler struct {
 	urlPrefix string
 	mu        sync.Mutex
 
-	devModeLifeFilesystemBase *string
+	devModeLiveFilesystemBase *string
 	tmpl                      *template.Template
 }
 
@@ -415,18 +415,18 @@ func (obj *acceptOidcHandler) templates() *template.Template {
 		},
 	}
 	templ = templ.Funcs(f)
-	if obj.devModeLifeFilesystemBase != nil {
+	if obj.devModeLiveFilesystemBase != nil {
 		foundFiles := make([]string, 0, 0)
-		snippets, err := os.ReadDir(fmt.Sprintf("%s/webcontent", *obj.devModeLifeFilesystemBase))
+		snippets, err := os.ReadDir(fmt.Sprintf("%s/webcontent", *obj.devModeLiveFilesystemBase))
 		for _, snippet := range snippets {
 			if strings.HasSuffix(snippet.Name(), ".html") {
-				foundFiles = append(foundFiles, fmt.Sprintf("%s/webcontent/%s", *obj.devModeLifeFilesystemBase, snippet.Name()))
+				foundFiles = append(foundFiles, fmt.Sprintf("%s/webcontent/%s", *obj.devModeLiveFilesystemBase, snippet.Name()))
 			}
 		}
-		snippets, err = os.ReadDir(fmt.Sprintf("%s/webcontent/snippet", *obj.devModeLifeFilesystemBase))
+		snippets, err = os.ReadDir(fmt.Sprintf("%s/webcontent/snippet", *obj.devModeLiveFilesystemBase))
 		for _, snippet := range snippets {
 			if strings.HasSuffix(snippet.Name(), ".snippet") {
-				foundFiles = append(foundFiles, fmt.Sprintf("%s/webcontent/snippet/%s", *obj.devModeLifeFilesystemBase, snippet.Name()))
+				foundFiles = append(foundFiles, fmt.Sprintf("%s/webcontent/snippet/%s", *obj.devModeLiveFilesystemBase, snippet.Name()))
 			}
 		}
 
@@ -468,8 +468,8 @@ func (obj *acceptOidcHandler) respondWithStaticFile(filename string, contentType
 		}
 
 		// dev mode - load from filesystem
-		if obj.devModeLifeFilesystemBase != nil {
-			file, err := os.Open(fmt.Sprintf("%s/webcontent/static%s", *obj.devModeLifeFilesystemBase, filename))
+		if obj.devModeLiveFilesystemBase != nil {
+			file, err := os.Open(fmt.Sprintf("%s/webcontent/static%s", *obj.devModeLiveFilesystemBase, filename))
 			if err == nil {
 				fileContent, err := io.ReadAll(file)
 				if err == nil {
