@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -40,7 +41,11 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		daoSource := dao.NewDynamoDbDao(cfg, "")
+		tablePrefix := os.Getenv("TABLE_PREFIX")
+		if tablePrefix != "" && !strings.HasSuffix(tablePrefix, "_") {
+			tablePrefix = fmt.Sprintf("%s_", tablePrefix)
+		}
+		daoSource := dao.NewDynamoDbDao(cfg, tablePrefix)
 		err = wrappedRunner(daoSource, hostUrl, func(handler http.Handler) error {
 			handlerAdapter := httpadapter.New(handler)
 			lambda.Start(handlerAdapter.ProxyWithContext)

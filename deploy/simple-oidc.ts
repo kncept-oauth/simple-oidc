@@ -150,7 +150,20 @@ interface TableDetails {
 
 function defineDataStack(dataStack: cdk.Stack): Array<TableDetails> {
   return jsonTables.tables.map((ddbTableToCreate: any) => {
-    const tableName: string = ddbTableToCreate.tableName
+    let tableName: string = ddbTableToCreate.tableName
+    
+    // Apply a table prefix:
+    //
+    // const tablePrefix = dataStack.node.tryGetContext("table-prefix")
+    let tablePrefix = process.env.TABLE_PREFIX
+    if (tablePrefix == undefined || tablePrefix == "") {
+      tablePrefix = ""
+    } else if (!tablePrefix.endsWith("_")) {
+      tablePrefix = tablePrefix + "_"
+    }
+    tableName = tablePrefix + tableName
+
+
     const partitionKeyName: string = ddbTableToCreate.partitionKeyName
     const sortKeyName: string | undefined = ddbTableToCreate.sortKeyName
 

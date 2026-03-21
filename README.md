@@ -22,7 +22,7 @@ At the moment, dependencies will be excluded (node_modules and golang vendoring)
 2) To provide a application that can easily be swapped out to different storage mechanisms
 
 # Deployment (managed)
-YOu may need to set the following hostnames
+YOu may need to set the following environment properties
   - LAMBDA_HOSTNAME
     - the end URL that the app will be hosted on
     - eg: simple-oidc.kncept.com
@@ -30,6 +30,8 @@ YOu may need to set the following hostnames
     - A list of all the AWS regions where the lambda will be deployed
     - The data stack will deploy to the first region in the list
     - eg: ap-southeast-2,us-east-1
+  - TABLE_PREFIX
+    - a dynamo db table prefix
 Run `./build.sh deploy` with valid AWS credentials.
 
 # Deployment 
