@@ -23,6 +23,8 @@ import (
 const staticClientId = "static-client-id"
 
 func NewApplication(daoSource dao.DaoSource) *fiber.App {
+	message := ""
+
 	ctx := context.Background()
 	viewEngine := html.NewFileSystem(http.FS(webcontent.Views), ".html")
 	viewEngine.AddFunc("Clients", func() []*client.Client {
@@ -75,7 +77,8 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 		Browse: true,
 	}))
 	app.Get("/", fiberOidc.UnprotectedRoute(), func(c *fiber.Ctx) error {
-		idToken := fiberoidc.IdTokenFromContext(c)
+		idToken := fiberoidc.GoOidcToken(c)
+		ctx := c.Context()
 		bind := make(map[string]any)
 		bind["ClientId"] = staticClientId
 		bind["Issuer"] = fiberOidcConfig.Issuer
@@ -95,11 +98,20 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 			return true
 		})
 		bind["AllUsers"] = allUsers
+		if message != "" {
+			bind["Message"] = message
+			bind["HasMessage"] = true
+			message = "" // (globally shared) state only persists for ONE render
+		} else {
+			bind["HasMessage"] = false
+		}
 		bind["DatastoreType"] = daoSource.GetDaoSourceDescription()
+
 		return c.Render("index", bind)
 	})
 
-	app.Post("/", func(c *fiber.Ctx) error {
+	app.Post("/", fiberOidc.UnprotectedRoute(), func(c *fiber.Ctx) error {
+		ctx := c.Context()
 		payload := struct {
 			Op string
 			Id string
@@ -118,7 +130,12 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 					"https://localhost:3000/oauth2/callback",
 				},
 			}
-			daoSource.GetClientStore(ctx).SaveClient(ctx, c)
+			err = daoSource.GetClientStore(ctx).SaveClient(ctx, c)
+			if err == nil {
+				message = fmt.Sprintf("Successfully created client:\n%v", c.ClientId)
+			} else {
+				message = fmt.Sprintf("Error occurred:\n%v", err)
+			}
 		case "delete":
 			c, err := daoSource.GetClientStore(ctx).GetClient(ctx, payload.Id)
 			if err != nil {
@@ -136,6 +153,17 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 				Name:  fiberOidcConfig.AuthCookieName,
 				Value: "",
 			})
+		case "userinfo-callback":
+			{
+
+				goOidcProvider, err := fiberOidc.Providers().GoOidcProvider(ctx)
+				if err != nil {
+					return err
+				}
+
+				userInfo, err := goOidcProvider.UserInfo(ctx, fiberoidc.Oauth2TokenSource(c))
+				message = fmt.Sprintf("%+v", userInfo)
+			}
 		}
 
 		// dynamically pull form type & details to perform operation

@@ -90,5 +90,40 @@ func TestClaimsToJwt(t *testing.T) {
 	if !errors.Is(err, cjwt.ErrInvalidSignature) {
 		t.Fatalf("Expected signature is not valid, got %v", err)
 	}
+}
+
+func TestJwtVerify(t *testing.T) {
+	nowTime := time.Now()
+	now := nowTime.Unix()
+	jwt := &IdClaimsJwt{
+		Iss: "issuer",
+		Nbf: now,
+		Exp: now,
+	}
+	err := jwt.Verify("bad_issuer")
+	if err == nil {
+		t.Errorf("Did not fail Issuer Validation")
+	}
+	if err.Error() != "Issuer" {
+		t.Errorf("Did not fail Issuer Validation")
+	}
+	err = jwt.Verify("issuer")
+	if err != nil {
+		t.Errorf("unexpected validation fail: %v", err)
+	}
+
+	jwt.Nbf++
+	err = jwt.Verify("issuer")
+	if err.Error() != "Not Before" {
+		t.Errorf("unexpected validation fail: %v", err)
+	}
+	jwt.Nbf = now
+
+	jwt.Exp--
+	err = jwt.Verify("issuer")
+	if err.Error() != "Expired" {
+		t.Errorf("unexpected validation fail: %v", err)
+	}
+	jwt.Exp = now
 
 }

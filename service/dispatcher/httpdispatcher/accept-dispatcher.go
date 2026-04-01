@@ -1,17 +1,13 @@
-package dispatcher
+package httpdispatcher
 
 import (
 	"context"
 	"crypto/rsa"
 	"errors"
 	"fmt"
-	"html/template"
-	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/kncept-oauth/simple-oidc/service/client"
@@ -22,16 +18,49 @@ import (
 	"github.com/kncept-oauth/simple-oidc/service/params"
 	"github.com/kncept-oauth/simple-oidc/service/session"
 	"github.com/kncept-oauth/simple-oidc/service/users"
-	"github.com/kncept-oauth/simple-oidc/service/webcontent"
 )
+
+const CurrentOperationParamsCookieName = "so-cp"
+const CurrentOperationNameCookieName = "so-op"
+
+const LoginJwtCookieName = "so-jwt" // contains the jwt
+const LoginRefreshTokenCookieName = "so-ts"
 
 type acceptOidcHandler struct {
 	daoSource dao.DaoSource
 	urlPrefix string
-	mu        sync.Mutex
 
-	devModeLiveFilesystemBase *string
-	tmpl                      *template.Template
+	templateDispatcher *TemplateDispatcher
+}
+
+func NewAcceptOidcHandler(
+	daoSource dao.DaoSource,
+	urlPrefix string,
+	devModeLiveFilesystemBase *string,
+) *http.ServeMux {
+	serveMux := http.NewServeMux()
+
+	acceptOidcHandler := acceptOidcHandler{
+		urlPrefix:          urlPrefix,
+		daoSource:          daoSource,
+		templateDispatcher: NewTemplateDispatcher(devModeLiveFilesystemBase),
+	}
+
+	serveMux.Handle("/snippet/", acceptOidcHandler.snippetHandler())
+	serveMux.Handle("/accept", acceptOidcHandler.acceptLogin())
+	serveMux.Handle("/login", acceptOidcHandler.loginHandler())
+	serveMux.Handle("/logout", acceptOidcHandler.logoutHandler())
+	serveMux.Handle("/register", acceptOidcHandler.registerHandler())
+	serveMux.Handle("/me", acceptOidcHandler.myAccountHandler()) // TODO: Redirect to /account (or /login)
+	serveMux.Handle("/account", acceptOidcHandler.myAccountHandler())
+	// serveMux.Handle("/style.css", acceptOidcHandler.respondWithStaticFile("style.css", "text/css", 200))
+	// serveMux.Handle("/htmx.js", acceptOidcHandler.respondWithStaticFile("htmx.js", "application/javascript", 200))
+	// serveMux.Handle("/header.js", acceptOidcHandler.respondWithStaticFile("header.js", "application/javascript", 200))
+	serveMux.Handle("/confirm", acceptOidcHandler.confirmLogin())
+
+	serveMux.Handle("/deauthorize/", acceptOidcHandler.deauthClientHandler())
+
+	return serveMux
 }
 
 func (obj *acceptOidcHandler) myAccountHandler() http.HandlerFunc {
@@ -70,7 +99,7 @@ func (obj *acceptOidcHandler) myAccountHandler() http.HandlerFunc {
 			ClientAuthorizations: clientAuthorizations.Results,
 		}
 
-		obj.respondWithTemplate("account.html", 200, res, params)
+		obj.templateDispatcher.RespondWithTemplate("account.html", 200, res, params)
 	}
 }
 
@@ -82,7 +111,7 @@ func (obj *acceptOidcHandler) snippetHandler() http.HandlerFunc {
 			res.WriteHeader(404)
 			return
 		}
-		obj.respondWithTemplate(fmt.Sprintf("%v.snippet", snippet), 200, res, params.QueryParamsToMap(req.URL))
+		obj.templateDispatcher.RespondWithTemplate(fmt.Sprintf("%v.snippet", snippet), 200, res, params.QueryParamsToMap(req.URL))
 	}
 }
 
@@ -112,7 +141,7 @@ func (obj *acceptOidcHandler) userClaims(req *http.Request) *session.AuthTokenJw
 		return nil
 	}
 
-	decodedKey, err := key.DecodeKey()
+	decodedKey, err := key.DecodePrivateKey()
 	if err != nil {
 		return nil
 	}
@@ -215,13 +244,13 @@ func (obj *acceptOidcHandler) acceptLogin() http.HandlerFunc {
 					}
 				}
 				acceptPageParams.ClientAuthorizations = clientAuthorizations
-				obj.respondWithTemplate("accept_authenticated.html", 200, res, acceptPageParams)
+				obj.templateDispatcher.RespondWithTemplate("accept_authenticated.html", 200, res, acceptPageParams)
 				return
 			}
 			// handle POST action (logout of account, etc)
 		} else {
 			if req.Method == http.MethodGet {
-				obj.respondWithTemplate("accept_unauthenticated.html", 200, res, acceptPageParams)
+				obj.templateDispatcher.RespondWithTemplate("accept_unauthenticated.html", 200, res, acceptPageParams)
 				return
 			}
 		}
@@ -341,194 +370,26 @@ func (obj *acceptOidcHandler) confirmLogin() http.HandlerFunc {
 	}
 }
 
-func (obj *acceptOidcHandler) templates() *template.Template {
-	obj.mu.Lock()
-	defer obj.mu.Unlock()
-	if obj.tmpl != nil {
-		return obj.tmpl
-	}
-
-	templ := template.New("_")
-
-	f := map[string]any{
-		"Wrap": func(keyPairs ...any) any {
-			keyPairsLen := len(keyPairs)
-			if keyPairsLen%2 != 0 {
-				panic("Must supply a full set of key pairs")
-			}
-			m := map[any]any{}
-			i := 0
-			for i < keyPairsLen {
-				m[keyPairs[i]] = keyPairs[i+1]
-				i = i + 2
-			}
-			return m
-		},
-		"Coalesce": func(str ...string) string {
-			for _, s := range str {
-				if s != "" {
-					return s
-				}
-			}
-			return ""
-		},
-
-		"time": func(args ...any) string {
-			if len(args) == 0 {
-				return ""
-			}
-			if t, ok := args[0].(time.Time); ok {
-				if len(args) == 1 {
-					return t.String()
-				}
-				if args[1] == "since" {
-					duration := time.Since(t)
-
-					seconds := int(duration.Seconds())
-					if seconds < 60 {
-						return fmt.Sprintf("%d seconds ago", seconds)
-					}
-
-					minutes := int(duration.Minutes())
-					if minutes < 60 {
-						return fmt.Sprintf("%d minutes ago", minutes)
-					}
-
-					hours := int(duration.Hours())
-					if hours < 24 {
-						return fmt.Sprintf("%d hours ago", hours)
-					}
-
-					days := int(hours / 24)
-					if days < 30 {
-						return fmt.Sprintf("%d days ago", days)
-					}
-
-					return fmt.Sprintf("%d months ago", int(days/30))
-
-				}
-				panic("unknown use of time function")
-			} else {
-				return ""
-			}
-
-		},
-	}
-	templ = templ.Funcs(f)
-	if obj.devModeLiveFilesystemBase != nil {
-		foundFiles := make([]string, 0, 0)
-		snippets, err := os.ReadDir(fmt.Sprintf("%s/webcontent", *obj.devModeLiveFilesystemBase))
-		for _, snippet := range snippets {
-			if strings.HasSuffix(snippet.Name(), ".html") {
-				foundFiles = append(foundFiles, fmt.Sprintf("%s/webcontent/%s", *obj.devModeLiveFilesystemBase, snippet.Name()))
-			}
-		}
-		snippets, err = os.ReadDir(fmt.Sprintf("%s/webcontent/snippet", *obj.devModeLiveFilesystemBase))
-		for _, snippet := range snippets {
-			if strings.HasSuffix(snippet.Name(), ".snippet") {
-				foundFiles = append(foundFiles, fmt.Sprintf("%s/webcontent/snippet/%s", *obj.devModeLiveFilesystemBase, snippet.Name()))
-			}
-		}
-
-		templ, err := templ.ParseFiles(foundFiles...)
-		// templ, err := templ.ParseGlob("*.html", "snippet/*.snippet")
-		if err != nil {
-			panic(err)
-		}
-		// do not cache (!!), force a re-read every time
-		return templ
-	} else {
-		templ, err := templ.ParseFS(webcontent.Fs, "*.html", "snippet/*.snippet")
-		if err != nil {
-			panic(err)
-		}
-		obj.tmpl = templ
-	}
-
-	return templ
-}
-
-func (obj *acceptOidcHandler) respondWithTemplate(filename string, statusCode int, res http.ResponseWriter, data any) {
-	t := obj.templates()
-	res.Header().Add("Content-Type", "text/html")
-	// TODO: configurable option - execute template before writing to stream
-	res.WriteHeader(statusCode)
-	err := t.ExecuteTemplate(res, filename, data)
-	// err := t.Execute(res, data)
-	if err != nil {
-		fmt.Printf("%v", err)
-	}
-}
-
-func (obj *acceptOidcHandler) respondWithStaticFile(filename string, contentType string, statusCode int) http.HandlerFunc {
-	return func(res http.ResponseWriter, req *http.Request) {
-		if !strings.HasPrefix(filename, "/") || strings.Contains(filename, "..") {
-			res.WriteHeader(http.StatusNotFound)
-			return
-		}
-
-		// dev mode - load from filesystem
-		if obj.devModeLiveFilesystemBase != nil {
-			file, err := os.Open(fmt.Sprintf("%s/webcontent/static%s", *obj.devModeLiveFilesystemBase, filename))
-			if err == nil {
-				fileContent, err := io.ReadAll(file)
-				if err == nil {
-					if contentType != "" {
-						res.Header().Add("Content-Type", contentType)
-					}
-					res.WriteHeader(statusCode)
-					res.Write(fileContent)
-					return
-				}
-			}
-			if errors.Is(err, os.ErrNotExist) {
-				res.WriteHeader(http.StatusNotFound)
-			} else {
-				res.WriteHeader(http.StatusInternalServerError)
-			}
-			return
-		}
-
-		file, err := webcontent.Fs.Open(fmt.Sprintf("static%v", filename))
-		if err == nil {
-			fileContent, err := io.ReadAll(file)
-			if err == nil {
-				if contentType != "" {
-					res.Header().Add("Content-Type", contentType)
-				}
-				res.WriteHeader(statusCode)
-				res.Write(fileContent)
-				return
-			}
-		}
-		if errors.Is(err, os.ErrNotExist) {
-			res.WriteHeader(http.StatusNotFound)
-			return
-		}
-		res.WriteHeader(http.StatusInternalServerError)
-	}
-}
-
 func (obj *acceptOidcHandler) createUserSession(ctx context.Context, res http.ResponseWriter, user *users.OidcUser) {
 	key, err := keys.GetCurrentKey(ctx, obj.daoSource.GetKeyStore(ctx))
 
-	decodedKey, err := key.DecodeKey()
+	decodedKey, err := key.DecodePrivateKey()
 	if err != nil {
-		obj.respondWithTemplate("register.html", 500, res, map[string]any{
+		obj.templateDispatcher.RespondWithTemplate("register.html", 500, res, map[string]any{
 			"err": err,
 		})
 		return
 	}
 	rsaKey, isRsaKey := decodedKey.(*rsa.PrivateKey)
 	if !isRsaKey {
-		obj.respondWithTemplate("register.html", 500, res, map[string]any{
+		obj.templateDispatcher.RespondWithTemplate("register.html", 500, res, map[string]any{
 			"err": errors.New("not an rsa key"),
 		})
 		return
 	}
 
 	if err != nil {
-		obj.respondWithTemplate("register.html", 500, res, map[string]any{
+		obj.templateDispatcher.RespondWithTemplate("register.html", 500, res, map[string]any{
 			"err": err,
 		})
 		return
@@ -538,7 +399,7 @@ func (obj *acceptOidcHandler) createUserSession(ctx context.Context, res http.Re
 	ses := session.NewSession(user.Id)
 	err = obj.daoSource.GetSessionStore(ctx).SaveSession(ctx, ses)
 	if err != nil {
-		obj.respondWithTemplate("register.html", 500, res, map[string]any{
+		obj.templateDispatcher.RespondWithTemplate("register.html", 500, res, map[string]any{
 			"err": err,
 		})
 		return
@@ -549,14 +410,14 @@ func (obj *acceptOidcHandler) createUserSession(ctx context.Context, res http.Re
 	// TRACE
 	jwt, err := jwtutil.ClaimsToJwt(authJwt, key.Kid, rsaKey)
 	if err != nil {
-		obj.respondWithTemplate("register.html", 500, res, map[string]any{
+		obj.templateDispatcher.RespondWithTemplate("register.html", 500, res, map[string]any{
 			"err": err,
 		})
 		return
 	}
 	rt, err := jwtutil.ClaimsToJwt(refreshJwt, key.Kid, rsaKey)
 	if err != nil {
-		obj.respondWithTemplate("register.html", 500, res, map[string]any{
+		obj.templateDispatcher.RespondWithTemplate("register.html", 500, res, map[string]any{
 			"err": err,
 		})
 		return
@@ -598,7 +459,7 @@ func (obj *acceptOidcHandler) registerHandler() http.HandlerFunc {
 		}
 
 		if req.Method == http.MethodGet {
-			obj.respondWithTemplate("register.html", 200, res, nil)
+			obj.templateDispatcher.RespondWithTemplate("register.html", 200, res, nil)
 			return
 		}
 		if req.Method == http.MethodPost {
@@ -615,18 +476,18 @@ func (obj *acceptOidcHandler) registerHandler() http.HandlerFunc {
 
 			user, err := userService.AttemptUserRegistration(ctx, username, password)
 			if errors.Is(err, users.ErrUserExists) {
-				obj.respondWithTemplate("register.html", 400, res, map[string]any{
+				obj.templateDispatcher.RespondWithTemplate("register.html", 400, res, map[string]any{
 					"err": "user already exists",
 				})
 				return
 			} else if err != nil {
-				obj.respondWithTemplate("register.html", 500, res, map[string]any{
+				obj.templateDispatcher.RespondWithTemplate("register.html", 500, res, map[string]any{
 					"err": err,
 				})
 				return
 			}
 			if user == nil {
-				obj.respondWithTemplate("register.html", 400, res, map[string]any{
+				obj.templateDispatcher.RespondWithTemplate("register.html", 400, res, map[string]any{
 					"err": "unable to create user",
 				})
 				return
@@ -663,7 +524,7 @@ func (obj *acceptOidcHandler) loginHandler() http.HandlerFunc {
 		// }
 
 		if req.Method == http.MethodGet {
-			obj.respondWithTemplate("login.html", 200, res, nil)
+			obj.templateDispatcher.RespondWithTemplate("login.html", 200, res, nil)
 			return
 		}
 		if req.Method == http.MethodPost {

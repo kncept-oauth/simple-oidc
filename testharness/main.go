@@ -16,7 +16,7 @@ import (
 	servicedao "github.com/kncept-oauth/simple-oidc/service/dao"
 	"github.com/kncept-oauth/simple-oidc/service/development"
 	servicedispatcher "github.com/kncept-oauth/simple-oidc/service/dispatcher"
-	"github.com/kncept-oauth/simple-oidc/testharness/dispatcher"
+	testharnessdispatcher "github.com/kncept-oauth/simple-oidc/testharness/dispatcher"
 )
 
 func main() {
@@ -65,7 +65,7 @@ func main() {
 // runs 'ListenAndServeTLS' in a goroutine
 func RunAppAsHttps(daoSource dao.DaoSource) (*fiber.App, error) {
 
-	app := dispatcher.NewApplication(daoSource)
+	app := testharnessdispatcher.NewApplication(daoSource)
 	testHarnessPort := "3000"
 
 	// TLS Certificates: generate if absent

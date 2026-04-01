@@ -1,10 +1,13 @@
-package dispatcher
+package oapidispatcher
 
 import (
 	"testing"
 
 	"github.com/kncept-oauth/simple-oidc/service/client"
+	"github.com/kncept-oauth/simple-oidc/service/gen/api"
 )
+
+var _ api.AuthorizationHandler = (*authorizationHandler)(nil)
 
 func TestRegexRedirectUriValidity(t *testing.T) {
 	client := &client.Client{

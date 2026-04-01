@@ -1,4 +1,4 @@
-package dispatcher
+package oapidispatcher
 
 import (
 	"context"
@@ -54,7 +54,7 @@ func (obj *authorizationHandler) TokenPost(ctx context.Context, req api.TokenPos
 		return nil, err
 	}
 
-	decodedKey, err := keyPair.DecodeKey()
+	decodedKey, err := keyPair.DecodePrivateKey()
 	if err != nil {
 		return nil, err
 	}

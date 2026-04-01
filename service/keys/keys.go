@@ -133,7 +133,7 @@ func (key *JwkKeypair) encodeKey(encryptionKey any) error {
 	key.Pem = buf.String()
 	return nil
 }
-func (key *JwkKeypair) DecodeKey() (any, error) {
+func (key *JwkKeypair) DecodePrivateKey() (any, error) {
 	pemBlock, remainder := pem.Decode([]byte(key.Pem))
 	if len(remainder) != 0 {
 		return nil, fmt.Errorf("unable to parse pem block")
@@ -144,21 +144,28 @@ func (key *JwkKeypair) DecodeKey() (any, error) {
 	}
 	return privateKey, nil
 }
-
-func (key *JwkKeypair) ToJwkDetails() (*JwkDetails, error) {
-	privateKey, err := key.DecodeKey()
+func (key *JwkKeypair) DecodeRsaKey() (*rsa.PrivateKey, error) {
+	privateKey, err := key.DecodePrivateKey()
 	if err != nil {
 		return nil, err
 	}
-
 	switch pk := privateKey.(type) {
 	case *rsa.PrivateKey:
 		if key.Kty != "RSA" {
 			return nil, fmt.Errorf("key type mismatch in %v", key.Kty)
 		}
-		return JwkFromRsa(key.Kid, &pk.PublicKey), nil
+		return pk, nil
 	}
 	return nil, fmt.Errorf("unable to convert to JwkDetails: %v", key.Kty)
+
+}
+
+func (key *JwkKeypair) ToJwkDetails() (*JwkDetails, error) {
+	privateKey, err := key.DecodeRsaKey()
+	if err != nil {
+		return nil, err
+	}
+	return JwkFromRsa(key.Kid, &privateKey.PublicKey), nil
 }
 
 // used for PUBLIC keys only.

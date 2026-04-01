@@ -9,6 +9,7 @@ import (
 // Handler handles operations described by OpenAPI v3 specification.
 type Handler interface {
 	AuthorizationHandler
+	UserInfoHandler
 	WellKnownHandler
 	// NewError creates *ErrRespStatusCode from error returned by handler.
 	//
@@ -32,6 +33,18 @@ type AuthorizationHandler interface {
 	//
 	// POST /token
 	TokenPost(ctx context.Context, req TokenPostReq) (TokenPostRes, error)
+}
+
+// UserInfoHandler handles operations described by OpenAPI v3 specification.
+//
+// x-ogen-operation-group: UserInfo
+type UserInfoHandler interface {
+	// UserinfoGet implements GET /userinfo operation.
+	//
+	// Get user information.
+	//
+	// GET /userinfo
+	UserinfoGet(ctx context.Context) (*UserInfo, error)
 }
 
 // WellKnownHandler handles operations described by OpenAPI v3 specification.

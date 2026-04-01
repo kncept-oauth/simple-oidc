@@ -48,6 +48,20 @@ func (s AuthorizeGetOK) Read(p []byte) (n int, err error) {
 
 func (*AuthorizeGetOK) authorizeGetRes() {}
 
+type BearerAuth struct {
+	Token string
+}
+
+// GetToken returns the value of Token.
+func (s *BearerAuth) GetToken() string {
+	return s.Token
+}
+
+// SetToken sets the value of Token.
+func (s *BearerAuth) SetToken(val string) {
+	s.Token = val
+}
+
 // ErrRespStatusCode wraps string with StatusCode.
 type ErrRespStatusCode struct {
 	StatusCode int
@@ -310,6 +324,7 @@ type OpenIDProviderMetadataResponse struct {
 	AuthorizationEndpoint string `json:"authorization_endpoint"`
 	TokenEndpoint         string `json:"token_endpoint"`
 	JwksURI               string `json:"jwks_uri"`
+	UserinfoEndpoint      string `json:"userinfo_endpoint"`
 }
 
 // GetIssuer returns the value of Issuer.
@@ -332,6 +347,11 @@ func (s *OpenIDProviderMetadataResponse) GetJwksURI() string {
 	return s.JwksURI
 }
 
+// GetUserinfoEndpoint returns the value of UserinfoEndpoint.
+func (s *OpenIDProviderMetadataResponse) GetUserinfoEndpoint() string {
+	return s.UserinfoEndpoint
+}
+
 // SetIssuer sets the value of Issuer.
 func (s *OpenIDProviderMetadataResponse) SetIssuer(val string) {
 	s.Issuer = val
@@ -350,6 +370,11 @@ func (s *OpenIDProviderMetadataResponse) SetTokenEndpoint(val string) {
 // SetJwksURI sets the value of JwksURI.
 func (s *OpenIDProviderMetadataResponse) SetJwksURI(val string) {
 	s.JwksURI = val
+}
+
+// SetUserinfoEndpoint sets the value of UserinfoEndpoint.
+func (s *OpenIDProviderMetadataResponse) SetUserinfoEndpoint(val string) {
+	s.UserinfoEndpoint = val
 }
 
 // OpenIDProviderMetadataResponseHeaders wraps OpenIDProviderMetadataResponse with response headers.
@@ -376,6 +401,52 @@ func (s *OpenIDProviderMetadataResponseHeaders) SetAccessControlAllowOrigin(val 
 // SetResponse sets the value of Response.
 func (s *OpenIDProviderMetadataResponseHeaders) SetResponse(val OpenIDProviderMetadataResponse) {
 	s.Response = val
+}
+
+// NewOptBool returns new OptBool with value set to v.
+func NewOptBool(v bool) OptBool {
+	return OptBool{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptBool is optional bool.
+type OptBool struct {
+	Value bool
+	Set   bool
+}
+
+// IsSet returns true if OptBool was set.
+func (o OptBool) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptBool) Reset() {
+	var v bool
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptBool) SetTo(v bool) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptBool) Get() (v bool, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptBool) Or(d bool) bool {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
 }
 
 // NewOptString returns new OptString with value set to v.
@@ -482,4 +553,74 @@ func (s *TokenRequestBody) SetClientID(val OptString) {
 // SetRedirectURI sets the value of RedirectURI.
 func (s *TokenRequestBody) SetRedirectURI(val OptString) {
 	s.RedirectURI = val
+}
+
+// Ref: #/components/schemas/UserInfo
+type UserInfo struct {
+	Sub                 string    `json:"sub"`
+	Email               OptString `json:"email"`
+	EmailVerified       OptBool   `json:"email_verified"`
+	PhoneNumber         OptString `json:"phone_number"`
+	PhoneNumberVerified OptBool   `json:"phone_number_verified"`
+	Username            OptString `json:"username"`
+}
+
+// GetSub returns the value of Sub.
+func (s *UserInfo) GetSub() string {
+	return s.Sub
+}
+
+// GetEmail returns the value of Email.
+func (s *UserInfo) GetEmail() OptString {
+	return s.Email
+}
+
+// GetEmailVerified returns the value of EmailVerified.
+func (s *UserInfo) GetEmailVerified() OptBool {
+	return s.EmailVerified
+}
+
+// GetPhoneNumber returns the value of PhoneNumber.
+func (s *UserInfo) GetPhoneNumber() OptString {
+	return s.PhoneNumber
+}
+
+// GetPhoneNumberVerified returns the value of PhoneNumberVerified.
+func (s *UserInfo) GetPhoneNumberVerified() OptBool {
+	return s.PhoneNumberVerified
+}
+
+// GetUsername returns the value of Username.
+func (s *UserInfo) GetUsername() OptString {
+	return s.Username
+}
+
+// SetSub sets the value of Sub.
+func (s *UserInfo) SetSub(val string) {
+	s.Sub = val
+}
+
+// SetEmail sets the value of Email.
+func (s *UserInfo) SetEmail(val OptString) {
+	s.Email = val
+}
+
+// SetEmailVerified sets the value of EmailVerified.
+func (s *UserInfo) SetEmailVerified(val OptBool) {
+	s.EmailVerified = val
+}
+
+// SetPhoneNumber sets the value of PhoneNumber.
+func (s *UserInfo) SetPhoneNumber(val OptString) {
+	s.PhoneNumber = val
+}
+
+// SetPhoneNumberVerified sets the value of PhoneNumberVerified.
+func (s *UserInfo) SetPhoneNumberVerified(val OptBool) {
+	s.PhoneNumberVerified = val
+}
+
+// SetUsername sets the value of Username.
+func (s *UserInfo) SetUsername(val OptString) {
+	s.Username = val
 }

@@ -4,23 +4,8 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/kncept-oauth/simple-oidc/service/gen/api"
 	"github.com/kncept-oauth/simple-oidc/service/params"
 )
-
-func TestDispatcherHandlerType(t *testing.T) {
-	assertIsApiHandler(&oapiDispatcher{})
-	assertIsWellKnownHandler(&oapiDispatcher{})
-	assertIsAuthorizationHandler(&oapiDispatcher{})
-
-	assertIsAuthorizationHandler(&authorizationHandler{})
-
-	assertIsWellKnownHandler(&wellKnownHandler{})
-}
-
-func assertIsApiHandler(receiver api.Handler)               {}
-func assertIsWellKnownHandler(api.WellKnownHandler)         {}
-func assertIsAuthorizationHandler(api.AuthorizationHandler) {}
 
 func TestUrlParamParsing(t *testing.T) {
 	u, err := url.Parse("?queryKey=queryVal1&k2=v2")

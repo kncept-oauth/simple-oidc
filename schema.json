@@ -233,6 +233,40 @@
                     }
                 }
             }
+        },
+        "/userinfo":{
+            "x-ogen-operation-group": "UserInfo",
+            "get":{
+                "description": "Get user information",
+                "parameters":[],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200":{
+                        "description": "Current User Information",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserInfo"
+                                }
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -250,13 +284,46 @@
             }
         },
         "schemas": {
+            "UserInfo": {
+                "type": "object",
+                "required": [
+                    "sub"
+                ],
+                "properties": {
+                    "sub": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "email": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "email_verified": {
+                        "nullable": false,
+                        "type": "boolean"
+                    },
+                    "phone_number": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "phone_number_verified": {
+                        "nullable": false,
+                        "type": "boolean"
+                    },
+                    "username": {
+                        "nullable": false,
+                        "type": "string"
+                    }
+                }
+            },
             "OpenIDProviderMetadataResponse": {
                 "type": "object",
                 "required": [
                     "issuer",
                     "authorization_endpoint",
                     "token_endpoint",
-                    "jwks_uri"
+                    "jwks_uri",
+                    "userinfo_endpoint"
                 ],
                 "properties": {
                     "issuer": {
@@ -272,6 +339,10 @@
                         "type": "string"
                     },
                     "jwks_uri": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "userinfo_endpoint": {
                         "nullable": false,
                         "type": "string"
                     }

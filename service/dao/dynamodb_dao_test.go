@@ -404,11 +404,11 @@ func TestKeystore(t *testing.T) {
 	if foundKey.Pem != key.Pem {
 		t.Fatalf("Pem mismatch between:\n%v\n%v\n", foundKey.Pem, key.Pem)
 	}
-	k0, err := foundKey.DecodeKey()
+	k0, err := foundKey.DecodePrivateKey()
 	if err != nil {
 		fmt.Printf("unable to decode key")
 	}
-	k1, err := key.DecodeKey()
+	k1, err := key.DecodePrivateKey()
 	if err != nil {
 		fmt.Printf("unable to decode key")
 	}

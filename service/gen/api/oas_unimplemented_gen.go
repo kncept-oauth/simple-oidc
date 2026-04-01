@@ -49,6 +49,15 @@ func (UnimplementedHandler) TokenPost(ctx context.Context, req TokenPostReq) (r 
 	return r, ht.ErrNotImplemented
 }
 
+// UserinfoGet implements GET /userinfo operation.
+//
+// Get user information.
+//
+// GET /userinfo
+func (UnimplementedHandler) UserinfoGet(ctx context.Context) (r *UserInfo, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // NewError creates *ErrRespStatusCode from error returned by handler.
 //
 // Used for common default response.

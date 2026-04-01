@@ -1,4 +1,4 @@
-package dispatcher
+package oapidispatcher
 
 import (
 	"context"
@@ -7,11 +7,6 @@ import (
 	"github.com/kncept-oauth/simple-oidc/service/dao"
 	"github.com/kncept-oauth/simple-oidc/service/gen/api"
 )
-
-type oapiDispatcher struct {
-	authorizationHandler
-	wellKnownHandler
-}
 
 type wellKnownHandler struct {
 	DaoSource dao.DaoSource
@@ -62,17 +57,10 @@ func (obj *wellKnownHandler) OpenIdConfiguration(ctx context.Context) (*api.Open
 			AuthorizationEndpoint: fmt.Sprintf("%v/authorize", obj.Issuer),
 			TokenEndpoint:         fmt.Sprintf("%v/token", obj.Issuer),
 			JwksURI:               fmt.Sprintf("%v/.well-known/jwks.json", obj.Issuer),
+			UserinfoEndpoint:      fmt.Sprintf("%v/userinfo", obj.Issuer),
 		},
 	}, nil
 
 	// fmt.Printf("TODO: OpenIdConfiguration\n")
 	// return nil, errors.ErrUnsupported
-}
-
-func (obj *oapiDispatcher) NewError(ctx context.Context, err error) *api.ErrRespStatusCode {
-	fmt.Printf("General error occurred: %v\n", err)
-	return &api.ErrRespStatusCode{
-		StatusCode: 500,
-		Response:   fmt.Sprintf("%v", err),
-	}
 }

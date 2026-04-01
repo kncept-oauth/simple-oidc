@@ -10,6 +10,12 @@
     <h1>Testharness</h1>
     <div>N.B. Testharness is an inherrently insecure test tool to allow manual play</div>
 
+    {{ if .Message }}
+    <div class="outlined">
+        <pre>{{ .Message}}</pre>
+    </div>
+    {{ end }}
+
     <div class="outlined">Logged In: {{ .LoggedIn }}
         {{ if .LoggedIn }}
         <div>
@@ -19,9 +25,13 @@
                 <li>Aud: {{ .IdToken.Audience }}</li>
             </ul>
             <form method="post">
-                    <input type="hidden" name="op" value="logout">
-                    <input type="submit" value="Logout">
-                </form>
+                <input type="hidden" name="op" value="userinfo-callback">
+                <input type="submit" value="UserInfo Callback">
+            </form>
+            <form method="post">
+                <input type="hidden" name="op" value="logout">
+                <input type="submit" value="Logout">
+            </form>
         </div>
         {{ end }}
     </div>

@@ -11,7 +11,7 @@ require (
 	github.com/gofiber/template/html/v2 v2.1.3
 	github.com/google/uuid v1.6.0
 	github.com/kncept-oauth/simple-oidc/service v0.0.0-00010101000000-000000000000
-	github.com/kncept/fiber-oidc v1.0.4
+	github.com/kncept/fiber-oidc v1.0.5
 
 )
 

@@ -10,4 +10,5 @@ const (
 	JwksOperation                OperationName = "Jwks"
 	OpenIdConfigurationOperation OperationName = "OpenIdConfiguration"
 	TokenPostOperation           OperationName = "TokenPost"
+	UserinfoGetOperation         OperationName = "UserinfoGet"
 )

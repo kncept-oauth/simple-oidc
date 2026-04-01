@@ -159,6 +159,27 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 
 				elem = origElem
+			case 'u': // Prefix: "userinfo"
+				origElem := elem
+				if l := len("userinfo"); len(elem) >= l && elem[0:l] == "userinfo" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch r.Method {
+					case "GET":
+						s.handleUserinfoGetRequest([0]string{}, elemIsEscaped, w, r)
+					default:
+						s.notAllowed(w, r, "GET")
+					}
+
+					return
+				}
+
+				elem = origElem
 			}
 
 			elem = origElem
@@ -360,6 +381,31 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						r.summary = ""
 						r.operationID = ""
 						r.pathPattern = "/token"
+						r.args = args
+						r.count = 0
+						return r, true
+					default:
+						return
+					}
+				}
+
+				elem = origElem
+			case 'u': // Prefix: "userinfo"
+				origElem := elem
+				if l := len("userinfo"); len(elem) >= l && elem[0:l] == "userinfo" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch method {
+					case "GET":
+						r.name = UserinfoGetOperation
+						r.summary = ""
+						r.operationID = ""
+						r.pathPattern = "/userinfo"
 						r.args = args
 						r.count = 0
 						return r, true

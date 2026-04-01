@@ -7,15 +7,11 @@ import (
 	"github.com/klauspost/compress/gzhttp"
 
 	"github.com/kncept-oauth/simple-oidc/service/dao"
+	"github.com/kncept-oauth/simple-oidc/service/dispatcher/httpdispatcher"
+	"github.com/kncept-oauth/simple-oidc/service/dispatcher/oapidispatcher"
 	"github.com/kncept-oauth/simple-oidc/service/dispatcherauth"
 	"github.com/kncept-oauth/simple-oidc/service/gen/api"
 )
-
-const CurrentOperationParamsCookieName = "so-cp"
-const CurrentOperationNameCookieName = "so-op"
-
-const LoginJwtCookieName = "so-jwt" // contains the jwt
-const LoginRefreshTokenCookieName = "so-ts"
 
 // optional config options
 
@@ -25,54 +21,30 @@ func NewApplication(
 	devModeLiveFilesystemBase *string,
 ) (http.HandlerFunc, error) {
 	urlPrefix = strings.TrimSuffix(urlPrefix, "/")
-	serveMux := http.NewServeMux()
 
-	acceptOidcHandler := acceptOidcHandler{
-		urlPrefix:                 urlPrefix,
-		daoSource:                 daoSource,
-		devModeLiveFilesystemBase: devModeLiveFilesystemBase,
-	}
+	serveMux := httpdispatcher.NewAcceptOidcHandler(daoSource, urlPrefix, devModeLiveFilesystemBase)
+	staticFileHandler := httpdispatcher.NewStaticFilesDispatcher(devModeLiveFilesystemBase)
+	templateHandler := httpdispatcher.NewTemplateDispatcher(devModeLiveFilesystemBase)
 
-	serveMux.Handle("/snippet/", acceptOidcHandler.snippetHandler())
-	serveMux.Handle("/accept", acceptOidcHandler.acceptLogin())
-	serveMux.Handle("/login", acceptOidcHandler.loginHandler())
-	serveMux.Handle("/logout", acceptOidcHandler.logoutHandler())
-	serveMux.Handle("/register", acceptOidcHandler.registerHandler())
-	serveMux.Handle("/me", acceptOidcHandler.myAccountHandler()) // TODO: Redirect to /account (or /login)
-	serveMux.Handle("/account", acceptOidcHandler.myAccountHandler())
-	// serveMux.Handle("/style.css", acceptOidcHandler.respondWithStaticFile("style.css", "text/css", 200))
-	// serveMux.Handle("/htmx.js", acceptOidcHandler.respondWithStaticFile("htmx.js", "application/javascript", 200))
-	// serveMux.Handle("/header.js", acceptOidcHandler.respondWithStaticFile("header.js", "application/javascript", 200))
-	serveMux.Handle("/confirm", acceptOidcHandler.confirmLogin())
-
-	serveMux.Handle("/deauthorize/", acceptOidcHandler.deauthClientHandler())
+	openApiHandler := oapidispatcher.NewOapiDispatcher(daoSource, urlPrefix)
 
 	server, err := api.NewServer(
-		&oapiDispatcher{
-			authorizationHandler: authorizationHandler{
-				DaoSource: daoSource,
-				Issuer:    urlPrefix,
-			},
-			wellKnownHandler: wellKnownHandler{
-				DaoSource: daoSource,
-				Issuer:    urlPrefix,
-			},
-		},
-		&dispatcherauth.Handler{},
+		openApiHandler,
+		&dispatcherauth.Handler{}, // auth handler
 		api.WithNotFound(func(w http.ResponseWriter, r *http.Request) {
 
 			if strings.HasSuffix(r.URL.Path, ".js") {
-				acceptOidcHandler.respondWithStaticFile(r.URL.Path, "application/javascript", 200)(w, r)
+				staticFileHandler.RespondWithStaticFile(r.URL.Path, "application/javascript", 200)(w, r)
 				return
 			}
 			if strings.HasSuffix(r.URL.Path, ".css") {
-				acceptOidcHandler.respondWithStaticFile(r.URL.Path, "text/css", 200)(w, r)
+				staticFileHandler.RespondWithStaticFile(r.URL.Path, "text/css", 200)(w, r)
 				return
 			}
 
 			if r.URL.Path == "/" {
 				// TODO: detect login, and set flag (eg: display login or account details link)
-				acceptOidcHandler.respondWithTemplate("index.html", 200, w, nil)
+				templateHandler.RespondWithTemplate("index.html", 200, w, nil)
 			} else {
 				w.WriteHeader(404)
 				// acceptOidcHandler.respondWithTemplate("notfound.html", 404, w, nil) // todo
