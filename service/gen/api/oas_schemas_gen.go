@@ -276,7 +276,33 @@ func (s *LoginTokens) SetRefreshToken(val string) {
 	s.RefreshToken = val
 }
 
-func (*LoginTokens) tokenPostRes() {}
+// LoginTokensHeaders wraps LoginTokens with response headers.
+type LoginTokensHeaders struct {
+	AccessControlAllowOrigin OptString
+	Response                 LoginTokens
+}
+
+// GetAccessControlAllowOrigin returns the value of AccessControlAllowOrigin.
+func (s *LoginTokensHeaders) GetAccessControlAllowOrigin() OptString {
+	return s.AccessControlAllowOrigin
+}
+
+// GetResponse returns the value of Response.
+func (s *LoginTokensHeaders) GetResponse() LoginTokens {
+	return s.Response
+}
+
+// SetAccessControlAllowOrigin sets the value of AccessControlAllowOrigin.
+func (s *LoginTokensHeaders) SetAccessControlAllowOrigin(val OptString) {
+	s.AccessControlAllowOrigin = val
+}
+
+// SetResponse sets the value of Response.
+func (s *LoginTokensHeaders) SetResponse(val LoginTokens) {
+	s.Response = val
+}
+
+func (*LoginTokensHeaders) tokenPostRes() {}
 
 // Ref: #/components/schemas/OpenIDProviderMetadataResponse
 type OpenIDProviderMetadataResponse struct {

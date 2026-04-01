@@ -77,13 +77,14 @@ func (obj *authorizationHandler) TokenPost(ctx context.Context, req api.TokenPos
 		return nil, err
 	}
 
-	loginTokens := &api.LoginTokens{
-		IDToken:     jwt,
-		AccessToken: jwt,
-		// RefreshToken: "refresh",
-	}
-
-	return loginTokens, nil
+	return &api.LoginTokensHeaders{
+		AccessControlAllowOrigin: api.NewOptString("*"),
+		Response: api.LoginTokens{
+			IDToken:     jwt,
+			AccessToken: jwt,
+			// RefreshToken: "refresh",
+		},
+	}, nil
 }
 func (obj authorizationHandler) AuthorizeGet(ctx context.Context, params api.AuthorizeGetParams) (api.AuthorizeGetRes, error) {
 	client, err := obj.DaoSource.GetClientStore(ctx).GetClient(ctx, params.ClientID)

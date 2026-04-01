@@ -419,7 +419,47 @@ func decodeTokenPostResponse(resp *http.Response) (res TokenPostRes, _ error) {
 			}(); err != nil {
 				return res, errors.Wrap(err, "validate")
 			}
-			return &response, nil
+			var wrapper LoginTokensHeaders
+			wrapper.Response = response
+			h := uri.NewHeaderDecoder(resp.Header)
+			// Parse "Access-Control-Allow-Origin" header.
+			{
+				cfg := uri.HeaderParameterDecodingConfig{
+					Name:    "Access-Control-Allow-Origin",
+					Explode: false,
+				}
+				if err := func() error {
+					if err := h.HasParam(cfg); err == nil {
+						if err := h.DecodeParam(cfg, func(d uri.Decoder) error {
+							var wrapperDotAccessControlAllowOriginVal string
+							if err := func() error {
+								val, err := d.DecodeValue()
+								if err != nil {
+									return err
+								}
+
+								c, err := conv.ToString(val)
+								if err != nil {
+									return err
+								}
+
+								wrapperDotAccessControlAllowOriginVal = c
+								return nil
+							}(); err != nil {
+								return err
+							}
+							wrapper.AccessControlAllowOrigin.SetTo(wrapperDotAccessControlAllowOriginVal)
+							return nil
+						}); err != nil {
+							return err
+						}
+					}
+					return nil
+				}(); err != nil {
+					return res, errors.Wrap(err, "parse Access-Control-Allow-Origin header")
+				}
+			}
+			return &wrapper, nil
 		default:
 			return res, validate.InvalidContentType(ct)
 		}
