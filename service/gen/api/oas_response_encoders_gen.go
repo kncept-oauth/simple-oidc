@@ -84,13 +84,32 @@ func encodeJwksResponse(response *JWKSetResponse, w http.ResponseWriter, span tr
 	return nil
 }
 
-func encodeOpenIdConfigurationResponse(response *OpenIDProviderMetadataResponse, w http.ResponseWriter, span trace.Span) error {
+func encodeOpenIdConfigurationResponse(response *OpenIDProviderMetadataResponseHeaders, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	// Encoding response headers.
+	{
+		h := uri.NewHeaderEncoder(w.Header())
+		// Encode "Access-Control-Allow-Origin" header.
+		{
+			cfg := uri.HeaderParameterEncodingConfig{
+				Name:    "Access-Control-Allow-Origin",
+				Explode: false,
+			}
+			if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
+				if val, ok := response.AccessControlAllowOrigin.Get(); ok {
+					return e.EncodeValue(conv.StringToString(val))
+				}
+				return nil
+			}); err != nil {
+				return errors.Wrap(err, "encode Access-Control-Allow-Origin header")
+			}
+		}
+	}
 	w.WriteHeader(200)
 	span.SetStatus(codes.Ok, http.StatusText(200))
 
 	e := new(jx.Encoder)
-	response.Encode(e)
+	response.Response.Encode(e)
 	if _, err := e.WriteTo(w); err != nil {
 		return errors.Wrap(err, "write")
 	}

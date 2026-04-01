@@ -61,7 +61,7 @@ type WellKnownInvoker interface {
 	// (Partial) OIDC config.
 	//
 	// GET /.well-known/openid-configuration
-	OpenIdConfiguration(ctx context.Context) (*OpenIDProviderMetadataResponse, error)
+	OpenIdConfiguration(ctx context.Context) (*OpenIDProviderMetadataResponseHeaders, error)
 }
 
 // Client implements OAS client.
@@ -394,12 +394,12 @@ func (c *Client) sendJwks(ctx context.Context) (res *JWKSetResponse, err error) 
 // (Partial) OIDC config.
 //
 // GET /.well-known/openid-configuration
-func (c *Client) OpenIdConfiguration(ctx context.Context) (*OpenIDProviderMetadataResponse, error) {
+func (c *Client) OpenIdConfiguration(ctx context.Context) (*OpenIDProviderMetadataResponseHeaders, error) {
 	res, err := c.sendOpenIdConfiguration(ctx)
 	return res, err
 }
 
-func (c *Client) sendOpenIdConfiguration(ctx context.Context) (res *OpenIDProviderMetadataResponse, err error) {
+func (c *Client) sendOpenIdConfiguration(ctx context.Context) (res *OpenIDProviderMetadataResponseHeaders, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("openIdConfiguration"),
 		semconv.HTTPRequestMethodKey.String("GET"),

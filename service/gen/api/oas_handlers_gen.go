@@ -446,7 +446,7 @@ func (s *Server) handleOpenIdConfigurationRequest(args [0]string, argsEscaped bo
 		err error
 	)
 
-	var response *OpenIDProviderMetadataResponse
+	var response *OpenIDProviderMetadataResponseHeaders
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -461,7 +461,7 @@ func (s *Server) handleOpenIdConfigurationRequest(args [0]string, argsEscaped bo
 		type (
 			Request  = struct{}
 			Params   = struct{}
-			Response = *OpenIDProviderMetadataResponse
+			Response = *OpenIDProviderMetadataResponseHeaders
 		)
 		response, err = middleware.HookMiddleware[
 			Request,

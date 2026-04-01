@@ -49,7 +49,7 @@ type WellKnownHandler interface {
 	// (Partial) OIDC config.
 	//
 	// GET /.well-known/openid-configuration
-	OpenIdConfiguration(ctx context.Context) (*OpenIDProviderMetadataResponse, error)
+	OpenIdConfiguration(ctx context.Context) (*OpenIDProviderMetadataResponseHeaders, error)
 }
 
 // Server implements http server based on OpenAPI v3 specification and

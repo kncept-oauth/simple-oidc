@@ -252,7 +252,7 @@ func decodeJwksResponse(resp *http.Response) (res *JWKSetResponse, _ error) {
 	return res, errors.Wrap(defRes, "error")
 }
 
-func decodeOpenIdConfigurationResponse(resp *http.Response) (res *OpenIDProviderMetadataResponse, _ error) {
+func decodeOpenIdConfigurationResponse(resp *http.Response) (res *OpenIDProviderMetadataResponseHeaders, _ error) {
 	switch resp.StatusCode {
 	case 200:
 		// Code 200.
@@ -285,7 +285,47 @@ func decodeOpenIdConfigurationResponse(resp *http.Response) (res *OpenIDProvider
 				}
 				return res, err
 			}
-			return &response, nil
+			var wrapper OpenIDProviderMetadataResponseHeaders
+			wrapper.Response = response
+			h := uri.NewHeaderDecoder(resp.Header)
+			// Parse "Access-Control-Allow-Origin" header.
+			{
+				cfg := uri.HeaderParameterDecodingConfig{
+					Name:    "Access-Control-Allow-Origin",
+					Explode: false,
+				}
+				if err := func() error {
+					if err := h.HasParam(cfg); err == nil {
+						if err := h.DecodeParam(cfg, func(d uri.Decoder) error {
+							var wrapperDotAccessControlAllowOriginVal string
+							if err := func() error {
+								val, err := d.DecodeValue()
+								if err != nil {
+									return err
+								}
+
+								c, err := conv.ToString(val)
+								if err != nil {
+									return err
+								}
+
+								wrapperDotAccessControlAllowOriginVal = c
+								return nil
+							}(); err != nil {
+								return err
+							}
+							wrapper.AccessControlAllowOrigin.SetTo(wrapperDotAccessControlAllowOriginVal)
+							return nil
+						}); err != nil {
+							return err
+						}
+					}
+					return nil
+				}(); err != nil {
+					return res, errors.Wrap(err, "parse Access-Control-Allow-Origin header")
+				}
+			}
+			return &wrapper, nil
 		default:
 			return res, validate.InvalidContentType(ct)
 		}

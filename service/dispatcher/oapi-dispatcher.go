@@ -53,12 +53,16 @@ func (obj *wellKnownHandler) Jwks(ctx context.Context) (*api.JWKSetResponse, err
 // additional rURL eferences and examples:
 // https://appleid.apple.com/.well-known/openid-configuration
 // https://accounts.google.com/.well-known/openid-configuration
-func (obj *wellKnownHandler) OpenIdConfiguration(ctx context.Context) (*api.OpenIDProviderMetadataResponse, error) {
-	return &api.OpenIDProviderMetadataResponse{
-		Issuer:                obj.Issuer,
-		AuthorizationEndpoint: fmt.Sprintf("%v/authorize", obj.Issuer),
-		TokenEndpoint:         fmt.Sprintf("%v/token", obj.Issuer),
-		JwksURI:               fmt.Sprintf("%v/.well-known/jwks.json", obj.Issuer),
+// func (obj *wellKnownHandler) OpenIdConfiguration(ctx context.Context) (*api.OpenIDProviderMetadataResponse, error) {
+func (obj *wellKnownHandler) OpenIdConfiguration(ctx context.Context) (*api.OpenIDProviderMetadataResponseHeaders, error) {
+	return &api.OpenIDProviderMetadataResponseHeaders{
+		AccessControlAllowOrigin: api.NewOptString("*"),
+		Response: api.OpenIDProviderMetadataResponse{
+			Issuer:                obj.Issuer,
+			AuthorizationEndpoint: fmt.Sprintf("%v/authorize", obj.Issuer),
+			TokenEndpoint:         fmt.Sprintf("%v/token", obj.Issuer),
+			JwksURI:               fmt.Sprintf("%v/.well-known/jwks.json", obj.Issuer),
+		},
 	}, nil
 
 	// fmt.Printf("TODO: OpenIdConfiguration\n")

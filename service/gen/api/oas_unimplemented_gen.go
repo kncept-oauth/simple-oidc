@@ -36,7 +36,7 @@ func (UnimplementedHandler) Jwks(ctx context.Context) (r *JWKSetResponse, _ erro
 // (Partial) OIDC config.
 //
 // GET /.well-known/openid-configuration
-func (UnimplementedHandler) OpenIdConfiguration(ctx context.Context) (r *OpenIDProviderMetadataResponse, _ error) {
+func (UnimplementedHandler) OpenIdConfiguration(ctx context.Context) (r *OpenIDProviderMetadataResponseHeaders, _ error) {
 	return r, ht.ErrNotImplemented
 }
 

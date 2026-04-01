@@ -22,7 +22,7 @@ prepare() {
   cd ..
 
   cd deploy
-  npm ci
+  npm i
   cd ..
 }
 

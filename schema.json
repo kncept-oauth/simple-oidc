@@ -21,6 +21,13 @@
                                     "$ref": "#/components/schemas/OpenIDProviderMetadataResponse"
                                 }
                             }
+                        },
+                        "headers":{
+                            "Access-Control-Allow-Origin": {
+                                "schema": {
+                                    "type":"string"
+                                }
+                            }
                         }
                     },
                     "default": {

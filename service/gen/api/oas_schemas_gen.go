@@ -326,6 +326,32 @@ func (s *OpenIDProviderMetadataResponse) SetJwksURI(val string) {
 	s.JwksURI = val
 }
 
+// OpenIDProviderMetadataResponseHeaders wraps OpenIDProviderMetadataResponse with response headers.
+type OpenIDProviderMetadataResponseHeaders struct {
+	AccessControlAllowOrigin OptString
+	Response                 OpenIDProviderMetadataResponse
+}
+
+// GetAccessControlAllowOrigin returns the value of AccessControlAllowOrigin.
+func (s *OpenIDProviderMetadataResponseHeaders) GetAccessControlAllowOrigin() OptString {
+	return s.AccessControlAllowOrigin
+}
+
+// GetResponse returns the value of Response.
+func (s *OpenIDProviderMetadataResponseHeaders) GetResponse() OpenIDProviderMetadataResponse {
+	return s.Response
+}
+
+// SetAccessControlAllowOrigin sets the value of AccessControlAllowOrigin.
+func (s *OpenIDProviderMetadataResponseHeaders) SetAccessControlAllowOrigin(val OptString) {
+	s.AccessControlAllowOrigin = val
+}
+
+// SetResponse sets the value of Response.
+func (s *OpenIDProviderMetadataResponseHeaders) SetResponse(val OpenIDProviderMetadataResponse) {
+	s.Response = val
+}
+
 // NewOptString returns new OptString with value set to v.
 func NewOptString(v string) OptString {
 	return OptString{
