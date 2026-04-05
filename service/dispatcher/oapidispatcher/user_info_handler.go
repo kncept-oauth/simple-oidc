@@ -18,7 +18,7 @@ type userInfoHandler struct {
 // UserinfoGet implements [api.UserInfoHandler].
 func (obj *userInfoHandler) UserinfoGet(ctx context.Context) (*api.UserInfo, error) {
 	jwt := dispatcherauth.GetAnyAuth(ctx)
-	claims, err := jwtutil.ParseJwtString(ctx, jwt, obj.DaoSource, obj.Issuer)
+	claims, err := jwtutil.ParseIdToken(ctx, jwt, obj.DaoSource.GetKeyStore(ctx), obj.Issuer)
 	if err != nil {
 		return nil, err
 	}

@@ -10,11 +10,26 @@ import (
 )
 
 type DaoSource interface {
-	GetDaoSourceDescription() string                                                 // name, type, etc
-	GetClientStore(ctx context.Context) client.ClientStore                           // clients
+	GetDaoSourceDescription() string // name, type, etc
+
+	// simple-oidc registered users. TODO: Move to a "User" and "UserAuth" model
+	GetUserStore(ctx context.Context) users.UserStore
+
+	// Clients are consumer of the auth service
+	GetClientStore(ctx context.Context) client.ClientStore
+
+	// Mapping of users to clients
 	GetClientAuthorizationStore(ctx context.Context) client.ClientAuthorizationStore // client sessions
-	GetAuthorizationCodeStore(ctx context.Context) client.AuthorizationCodeStore     // user-client authorizations
-	GetKeyStore(ctx context.Context) keys.Keystore                                   // encryption keys
-	GetUserStore(ctx context.Context) users.UserStore                                // simple-oidc registered users. TODO: Move to a "User" and "UserAuth" model
-	GetSessionStore(ctx context.Context) session.SessionStore                        // simple-oidc sessions (not connected to auth clients)
+
+	// OIDC Authorization Codes for user-client authorizations
+	GetAuthorizationCodeStore(ctx context.Context) client.AuthorizationCodeStore
+
+	// Encryption keys (currently RSA)
+	GetKeyStore(ctx context.Context) keys.Keystore
+
+	// this is sessions against the simple-oidc service
+	// this is NOT connectd to client-authorizations
+	// eg: multiple client-authorizatons can come from a single simple-oidc session
+	// TODO: rename to GetSimpleOidcSessionStore
+	GetSessionStore(ctx context.Context) session.SessionStore
 }

@@ -53,8 +53,7 @@ type DdbEntityDetails struct {
 // I like this pattern.
 type DdbEntityMapper[T any] struct {
 	DdbEntityDetails
-	Ddb      *dynamodb.Client `json:"-"`
-	Supplier func() *T        `json:"-"`
+	Ddb *dynamodb.Client `json:"-"`
 }
 
 func (d *DdbEntityMapper[T]) Get(ctx context.Context, partitionKey string, sortKey string) (*T, error) {
@@ -73,7 +72,7 @@ func (d *DdbEntityMapper[T]) Get(ctx context.Context, partitionKey string, sortK
 		return nil, nil
 	}
 
-	val := d.Supplier()
+	val := new(T)
 	err = attributevalue.UnmarshalMap(res.Item, val)
 	if err != nil {
 		return nil, err
@@ -125,7 +124,7 @@ func (d *DdbEntityMapper[T]) ScrollScan(ctx context.Context, input dynamodb.Scan
 	if len(scanRes.Items) != 0 {
 		items := make([]*T, 0)
 		for _, item := range scanRes.Items {
-			val := d.Supplier()
+			val := new(T)
 			err = attributevalue.UnmarshalMap(item, val)
 			if err != nil {
 				return err
@@ -142,7 +141,7 @@ func (d *DdbEntityMapper[T]) ScrollScan(ctx context.Context, input dynamodb.Scan
 
 		items := make([]*T, 0)
 		for _, item := range scanRes.Items {
-			val := d.Supplier()
+			val := new(T)
 			err = attributevalue.UnmarshalMap(item, val)
 			if err != nil {
 				return err
@@ -164,7 +163,7 @@ func (d *DdbEntityMapper[T]) ScrollQuery(ctx context.Context, input dynamodb.Que
 	if len(scanRes.Items) != 0 {
 		items := make([]*T, 0)
 		for _, item := range scanRes.Items {
-			val := d.Supplier()
+			val := new(T)
 			err = attributevalue.UnmarshalMap(item, val)
 			if err != nil {
 				return err
@@ -181,7 +180,7 @@ func (d *DdbEntityMapper[T]) ScrollQuery(ctx context.Context, input dynamodb.Que
 
 		items := make([]*T, 0)
 		for _, item := range scanRes.Items {
-			val := d.Supplier()
+			val := new(T)
 			err = attributevalue.UnmarshalMap(item, val)
 			if err != nil {
 				return err

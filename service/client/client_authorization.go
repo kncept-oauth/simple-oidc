@@ -19,8 +19,7 @@ type ClientAuthorizationStore interface {
 }
 
 type ClientAuthorization struct {
-	UserId          string    `dynamodbav:"userId"`
-	ClientId        string    `dynamodbav:"clientId"`
-	AuthorizedAt    time.Time `dynamodbav:"authorizedAt"`
-	LastRefreshedAt time.Time `dynamodbav:"lastRefreshedAt"`
+	UserId       string    `dynamodbav:"userId"`
+	ClientId     string    `dynamodbav:"clientId"`
+	AuthorizedAt time.Time `dynamodbav:"authorizedAt"`
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/gofiber/template/html/v2"
 
 	fiberoidc "github.com/kncept/fiber-oidc"
+	"github.com/kncept/fiber-oidc/provider"
 )
 
 const staticClientId = "static-client-id"
@@ -55,11 +56,15 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 	}
 
 	fiberOidcConfig := &fiberoidc.Config{
-		Issuer:         "https://localhost:8443",
-		ClientId:       staticClientId,
-		ClientSecret:   fmt.Sprintf("client-secret-%v", uuid.NewString()),
-		RedirectUri:    "https://localhost:3000/oauth2/callback",
-		AuthCookieName: "bearer-auth",
+		OidcProviderConfig: provider.OidcProviderConfig{
+			Issuer:       "https://localhost:8443",
+			ClientId:     staticClientId,
+			ClientSecret: fmt.Sprintf("client-secret-%v", uuid.NewString()),
+			RedirectUri:  "https://localhost:3000/oauth2/callback",
+		},
+		WebAppConfig: fiberoidc.WebAppConfig{
+			AuthCookieName: "bearer-auth",
+		},
 	}
 	fiberOidc, err := fiberoidc.New(ctx, fiberOidcConfig)
 	if err != nil {
@@ -122,7 +127,7 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 		}
 		switch payload.Op {
 		case "init":
-			fiberOidc.Initialize(c.Context())
+			fiberOidc.Providers().Initialize(c.Context())
 		case "create":
 			c := &client.Client{
 				ClientId: uuid.NewString(),

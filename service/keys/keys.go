@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/segmentio/ksuid"
 )
 
 type Keystore interface {
@@ -87,6 +88,8 @@ func KeyIdPrefix(keyId string) string {
 }
 
 func GenerateJwkKeypair(asof ...time.Time) (*JwkKeypair, error) {
+	k, err := ksuid.NewRandom()
+
 	if len(asof) > 1 {
 		panic("must only provie one asof arg")
 	}
@@ -102,7 +105,7 @@ func GenerateJwkKeypair(asof ...time.Time) (*JwkKeypair, error) {
 	now := asof[0].UTC().Truncate(time.Second)
 	exp := now.Add(30 * 24 * time.Hour)
 	keyPair := &JwkKeypair{
-		Kid: uuid.NewString(),
+		Kid: k.String(),
 		Kty: "RSA",
 		Pem: "",
 

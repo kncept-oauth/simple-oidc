@@ -2,10 +2,8 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/segmentio/ksuid"
 )
 
@@ -19,11 +17,10 @@ type AuthorizationCode struct {
 	UserId     string     `dynamodbav:"userId"`
 	Expiry     *time.Time `dynamodbav:"expiry"`
 	OidcParams string     `dynamodbav:"params"`
-	// session id
 }
 
 func (ac *AuthorizationCode) Created() (time.Time, error) {
-	k, err := ksuid.Parse(ac.Code[0:27])
+	k, err := ksuid.Parse(ac.Code)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -36,7 +33,7 @@ func NewAuthorizationCode(userId string, oidcParams string) (*AuthorizationCode,
 		return nil, err
 	}
 	return &AuthorizationCode{
-		Code:       fmt.Sprintf("%v-%v", k, uuid.New()),
+		Code:       k.String(),
 		UserId:     userId,
 		OidcParams: oidcParams,
 	}, nil

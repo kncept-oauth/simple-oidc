@@ -8,7 +8,6 @@ import (
 	"log"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/kncept-oauth/simple-oidc/service/client"
 	"github.com/kncept-oauth/simple-oidc/service/dao"
@@ -17,6 +16,7 @@ import (
 	"github.com/kncept-oauth/simple-oidc/service/jwtutil"
 	"github.com/kncept-oauth/simple-oidc/service/keys"
 	"github.com/kncept-oauth/simple-oidc/service/params"
+	"github.com/kncept-oauth/simple-oidc/service/session"
 )
 
 type authorizationHandler struct {
@@ -63,26 +63,37 @@ func (obj *authorizationHandler) TokenPost(ctx context.Context, req api.TokenPos
 		return nil, errors.New("not an rsa key")
 	}
 
-	now := time.Now().UTC().Truncate(time.Second)
-	claims := &jwtutil.IdClaimsJwt{
-		Iss: obj.Issuer,
-		Sub: authCode.UserId,
-		Aud: acParams.ClientId, // TODO: use client configuration for audiences here
-		Nbf: now.Unix(),
-		Iat: now.Unix(),
-		Exp: now.Add(time.Hour * 3).Unix(),
-	}
-	jwt, err := jwtutil.ClaimsToJwt(claims, keyPair.Kid, rsaKey)
+	userId := authCode.UserId
+	clientId := acParams.ClientId
+
+	ses, err := session.NewSession(userId, clientId)
 	if err != nil {
 		return nil, err
 	}
 
+	idToken, refreshToken := ses.IssueTokens(obj.Issuer, clientId)
+
+	sessionStore := obj.DaoSource.GetSessionStore(ctx)
+	err = sessionStore.SaveSession(ctx, ses)
+	if err != nil {
+		return nil, err
+	}
+
+	idTokenJwt, err := jwtutil.ClaimsToJwt(idToken, keyPair.Kid, rsaKey)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshTokenJwt, err := jwtutil.ClaimsToJwt(refreshToken, keyPair.Kid, rsaKey)
+	if err != nil {
+		return nil, err
+	}
 	return &api.LoginTokensHeaders{
 		AccessControlAllowOrigin: api.NewOptString("*"),
 		Response: api.LoginTokens{
-			IDToken:     jwt,
-			AccessToken: jwt,
-			// RefreshToken: "refresh",
+			IDToken:      idTokenJwt,
+			AccessToken:  idTokenJwt,
+			RefreshToken: refreshTokenJwt,
 		},
 	}, nil
 }

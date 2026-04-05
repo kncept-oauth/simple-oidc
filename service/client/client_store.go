@@ -2,6 +2,9 @@ package client
 
 import "context"
 
+// hardcoded static client id
+const ClientId_SimpleOidc = "simple-oidc"
+
 type Client struct {
 	ClientId string `dynamodbav:"clientId"` // assigned guid
 

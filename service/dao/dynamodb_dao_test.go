@@ -240,34 +240,30 @@ func TestClientAuthorizationStore(t *testing.T) {
 
 	now := time.Now()
 	if err = clientAuths.SaveClientAuthorization(ctx, &client.ClientAuthorization{
-		UserId:          userId1,
-		ClientId:        clientId1,
-		AuthorizedAt:    now,
-		LastRefreshedAt: now,
+		UserId:       userId1,
+		ClientId:     clientId1,
+		AuthorizedAt: now,
 	}); err != nil {
 		t.Fatalf("Failed to save client authorization")
 	}
 	if err = clientAuths.SaveClientAuthorization(ctx, &client.ClientAuthorization{
-		UserId:          userId1,
-		ClientId:        clientId2,
-		AuthorizedAt:    now,
-		LastRefreshedAt: now,
+		UserId:       userId1,
+		ClientId:     clientId2,
+		AuthorizedAt: now,
 	}); err != nil {
 		t.Fatalf("Failed to save client authorization")
 	}
 	if err = clientAuths.SaveClientAuthorization(ctx, &client.ClientAuthorization{
-		UserId:          userId2,
-		ClientId:        clientId1,
-		AuthorizedAt:    now,
-		LastRefreshedAt: now,
+		UserId:       userId2,
+		ClientId:     clientId1,
+		AuthorizedAt: now,
 	}); err != nil {
 		t.Fatalf("Failed to save client authorization")
 	}
 	if err = clientAuths.SaveClientAuthorization(ctx, &client.ClientAuthorization{
-		UserId:          userId2,
-		ClientId:        clientId2,
-		AuthorizedAt:    now,
-		LastRefreshedAt: now,
+		UserId:       userId2,
+		ClientId:     clientId2,
+		AuthorizedAt: now,
 	}); err != nil {
 		t.Fatalf("Failed to save client authorization")
 	}
@@ -497,7 +493,10 @@ func TestSessionStore(t *testing.T) {
 	if ses != nil {
 		t.Fatalf("Unexpected found session")
 	}
-	ses = session.NewSession(uuid.NewString())
+	ses, err = session.NewSession(uuid.NewString(), client.ClientId_SimpleOidc)
+	if err != nil {
+		t.Fatalf("Unable to create session")
+	}
 	err = sessionStore.SaveSession(ctx, ses)
 	if err != nil {
 		t.Fatalf("Unable to SaveSession: %v", err)

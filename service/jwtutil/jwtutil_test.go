@@ -12,6 +12,8 @@ import (
 	"github.com/google/uuid"
 )
 
+var _ VerifiableClaims = (*IdToken)(nil)
+
 type ClaimsTestStruct struct {
 	Audience  cjwt.Audience     `json:"aud,omitempty"`
 	Issuer    string            `json:"iss,omitempty"`
@@ -49,7 +51,6 @@ func TestClaimsToJwt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error generating JWT: %v", err)
 	}
-	fmt.Printf("%v\n", jwt)
 
 	jwt2, err := ClaimsToJwt(testClaims, "test-key", rsaKey())
 	if err != nil {
@@ -93,18 +94,23 @@ func TestClaimsToJwt(t *testing.T) {
 }
 
 func TestJwtVerify(t *testing.T) {
-	nowTime := time.Now()
-	now := nowTime.Unix()
-	jwt := &IdClaimsJwt{
-		Iss: "issuer",
-		Nbf: now,
-		Exp: now,
+	now := time.Now()
+
+	jwt := &IdToken{
+		MinimalIdToken: MinimalIdToken{
+			Iss: "issuer",
+			Iat: now.Unix(),
+			Exp: now.Unix(),
+		},
+		AdditionalCustomClaimsIdToken: AdditionalCustomClaimsIdToken{
+			Nbf: now.Unix(),
+		},
 	}
 	err := jwt.Verify("bad_issuer")
 	if err == nil {
 		t.Errorf("Did not fail Issuer Validation")
 	}
-	if err.Error() != "Issuer" {
+	if err == nil || err.Error() != "Issuer" {
 		t.Errorf("Did not fail Issuer Validation")
 	}
 	err = jwt.Verify("issuer")
@@ -114,16 +120,16 @@ func TestJwtVerify(t *testing.T) {
 
 	jwt.Nbf++
 	err = jwt.Verify("issuer")
-	if err.Error() != "Not Before" {
+	if err == nil || err.Error() != "Not Before" {
 		t.Errorf("unexpected validation fail: %v", err)
 	}
-	jwt.Nbf = now
+	jwt.Nbf = now.Unix()
 
 	jwt.Exp--
 	err = jwt.Verify("issuer")
-	if err.Error() != "Expired" {
+	if err == nil || err.Error() != "Expired" {
 		t.Errorf("unexpected validation fail: %v", err)
 	}
-	jwt.Exp = now
+	jwt.Exp = now.Unix()
 
 }

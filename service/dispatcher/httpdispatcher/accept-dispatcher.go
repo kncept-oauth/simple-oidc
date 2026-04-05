@@ -123,7 +123,7 @@ func (obj *acceptOidcHandler) userId(req *http.Request) string {
 	return claims.Sub
 }
 
-func (obj *acceptOidcHandler) userClaims(req *http.Request) *session.AuthTokenJwt {
+func (obj *acceptOidcHandler) userClaims(req *http.Request) *jwtutil.IdToken {
 	ctx := req.Context()
 	soJwt, err := req.Cookie(LoginJwtCookieName) // Simple Oidc Session JWT (if present)
 	if err != nil {
@@ -150,7 +150,7 @@ func (obj *acceptOidcHandler) userClaims(req *http.Request) *session.AuthTokenJw
 		return nil
 	}
 
-	jwtToken := &session.AuthTokenJwt{}
+	jwtToken := &jwtutil.IdToken{}
 	err = jwtutil.JwtToClaims(soJwt.Value, &rsaKey.PublicKey, jwtToken)
 	if err != nil {
 		return nil
@@ -324,10 +324,9 @@ func (obj *acceptOidcHandler) confirmLogin() http.HandlerFunc {
 		now := time.Now().UTC()
 		if newAuthorization {
 			err = obj.daoSource.GetClientAuthorizationStore(ctx).SaveClientAuthorization(ctx, &client.ClientAuthorization{
-				ClientId:        soCurrent.ClientId,
-				UserId:          userId,
-				AuthorizedAt:    now,
-				LastRefreshedAt: now,
+				ClientId:     soCurrent.ClientId,
+				UserId:       userId,
+				AuthorizedAt: now,
 			})
 			if err != nil {
 				fmt.Printf("%v\n", err)
@@ -396,7 +395,13 @@ func (obj *acceptOidcHandler) createUserSession(ctx context.Context, res http.Re
 	}
 
 	// create a simple-oidc session
-	ses := session.NewSession(user.Id)
+	ses, err := session.NewSession(user.Id, client.ClientId_SimpleOidc)
+	if err != nil {
+		obj.templateDispatcher.RespondWithTemplate("register.html", 500, res, map[string]any{
+			"err": err,
+		})
+		return
+	}
 	err = obj.daoSource.GetSessionStore(ctx).SaveSession(ctx, ses)
 	if err != nil {
 		obj.templateDispatcher.RespondWithTemplate("register.html", 500, res, map[string]any{
@@ -405,17 +410,16 @@ func (obj *acceptOidcHandler) createUserSession(ctx context.Context, res http.Re
 		return
 	}
 
-	authJwt := ses.MakeAuthTokenJwt(user, obj.urlPrefix, obj.urlPrefix)
-	refreshJwt := ses.MakeRefreshTokenJwt(*authJwt)
-	// TRACE
-	jwt, err := jwtutil.ClaimsToJwt(authJwt, key.Kid, rsaKey)
+	idToken, refreshToken := ses.IssueTokens(obj.urlPrefix, obj.urlPrefix)
+
+	jwt, err := jwtutil.ClaimsToJwt(idToken, key.Kid, rsaKey)
 	if err != nil {
 		obj.templateDispatcher.RespondWithTemplate("register.html", 500, res, map[string]any{
 			"err": err,
 		})
 		return
 	}
-	rt, err := jwtutil.ClaimsToJwt(refreshJwt, key.Kid, rsaKey)
+	rt, err := jwtutil.ClaimsToJwt(refreshToken, key.Kid, rsaKey)
 	if err != nil {
 		obj.templateDispatcher.RespondWithTemplate("register.html", 500, res, map[string]any{
 			"err": err,

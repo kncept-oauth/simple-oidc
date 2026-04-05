@@ -68,9 +68,6 @@ func (d *DynamoDbDaoSource) GetAuthorizationCodeStore(ctx context.Context) clien
 				PartitionKeyName: "code",
 			},
 			Ddb: d.ddb,
-			Supplier: func() *client.AuthorizationCode {
-				return &client.AuthorizationCode{}
-			},
 		},
 	}
 }
@@ -135,9 +132,6 @@ func (d *DynamoDbDaoSource) GetClientAuthorizationStore(ctx context.Context) cli
 				SortKeyName:      "clientId",
 			},
 			Ddb: d.ddb,
-			Supplier: func() *client.ClientAuthorization {
-				return &client.ClientAuthorization{}
-			},
 		},
 	}
 }
@@ -170,9 +164,6 @@ func (d *DynamoDbDaoSource) GetClientStore(ctx context.Context) client.ClientSto
 				PartitionKeyName: "clientId",
 			},
 			Ddb: d.ddb,
-			Supplier: func() *client.Client {
-				return &client.Client{}
-			},
 		},
 	}
 }
@@ -189,9 +180,6 @@ func (d *DynamoDbDaoSource) GetKeyStore(ctx context.Context) keys.Keystore {
 				PartitionKeyName: "kid",
 			},
 			Ddb: d.ddb,
-			Supplier: func() *keys.JwkKeypair {
-				return &keys.JwkKeypair{}
-			},
 		},
 	}
 }
@@ -233,9 +221,6 @@ func (d *DynamoDbDaoSource) GetUserStore(ctx context.Context) users.UserStore {
 				PartitionKeyName: "id",
 			},
 			Ddb: d.ddb,
-			Supplier: func() *users.OidcUser {
-				return &users.OidcUser{}
-			},
 		},
 	}
 }
@@ -281,9 +266,6 @@ func (d *DynamoDbDaoSource) GetSessionStore(ctx context.Context) session.Session
 				SortKeyName:      "userId",
 			},
 			Ddb: d.ddb,
-			Supplier: func() *session.Session {
-				return &session.Session{}
-			},
 		},
 	}
 }
