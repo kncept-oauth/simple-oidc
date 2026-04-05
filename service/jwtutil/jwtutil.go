@@ -110,12 +110,13 @@ type AdditionalStandardClaimsIdToken struct {
 	AtHash   string   `json:"at_hash,omitempty"`
 	ACR      string   `json:"acr,omitempty"` //  Authentication Context Class Reference
 	AMR      []string `json:"amr,omitempty"` //   Authentication Methods References
-	AZP      string   `json:"azp"`           //  Authorized third party
+	AZP      string   `json:"azp,omitempty"` //  Authorized third party
 }
 
 type AdditionalCustomClaimsIdToken struct {
 	Nbf int64  `json:"nbf,omitempty"` // not before
 	Sid string `json:"sid,omitempty"`
+	// scopes ?
 }
 
 type IdToken struct {
@@ -158,6 +159,13 @@ type AdditionalRefreshClaims struct {
 type RefreshClaimsJwt struct {
 	MinimalIdToken
 	AdditionalRefreshClaims
+}
+
+func (jwt RefreshClaimsJwt) Verify(issuer string) error {
+	if jwt.Iss != issuer {
+		return fmt.Errorf("Issuer")
+	}
+	return jwt.VerifyDateClaims()
 }
 
 func (jwt RefreshClaimsJwt) VerifyDateClaims() error {

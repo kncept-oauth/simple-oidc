@@ -97,23 +97,60 @@ func (s *Server) decodeTokenPostRequest(r *http.Request) (
 				}
 				if err := q.HasParam(cfg); err == nil {
 					if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
-						val, err := d.DecodeValue()
-						if err != nil {
+						var unwrappedDotCodeVal string
+						if err := func() error {
+							val, err := d.DecodeValue()
+							if err != nil {
+								return err
+							}
+
+							c, err := conv.ToString(val)
+							if err != nil {
+								return err
+							}
+
+							unwrappedDotCodeVal = c
+							return nil
+						}(); err != nil {
 							return err
 						}
-
-						c, err := conv.ToString(val)
-						if err != nil {
-							return err
-						}
-
-						unwrapped.Code = c
+						unwrapped.Code.SetTo(unwrappedDotCodeVal)
 						return nil
 					}); err != nil {
 						return req, close, errors.Wrap(err, "decode \"code\"")
 					}
-				} else {
-					return req, close, errors.Wrap(err, "query")
+				}
+			}
+			{
+				cfg := uri.QueryParameterDecodingConfig{
+					Name:    "refresh_token",
+					Style:   uri.QueryStyleForm,
+					Explode: true,
+				}
+				if err := q.HasParam(cfg); err == nil {
+					if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+						var unwrappedDotRefreshTokenVal string
+						if err := func() error {
+							val, err := d.DecodeValue()
+							if err != nil {
+								return err
+							}
+
+							c, err := conv.ToString(val)
+							if err != nil {
+								return err
+							}
+
+							unwrappedDotRefreshTokenVal = c
+							return nil
+						}(); err != nil {
+							return err
+						}
+						unwrapped.RefreshToken.SetTo(unwrappedDotRefreshTokenVal)
+						return nil
+					}); err != nil {
+						return req, close, errors.Wrap(err, "decode \"refresh_token\"")
+					}
 				}
 			}
 			{
@@ -209,6 +246,38 @@ func (s *Server) decodeTokenPostRequest(r *http.Request) (
 						return nil
 					}); err != nil {
 						return req, close, errors.Wrap(err, "decode \"redirect_uri\"")
+					}
+				}
+			}
+			{
+				cfg := uri.QueryParameterDecodingConfig{
+					Name:    "scope",
+					Style:   uri.QueryStyleForm,
+					Explode: true,
+				}
+				if err := q.HasParam(cfg); err == nil {
+					if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+						var unwrappedDotScopeVal string
+						if err := func() error {
+							val, err := d.DecodeValue()
+							if err != nil {
+								return err
+							}
+
+							c, err := conv.ToString(val)
+							if err != nil {
+								return err
+							}
+
+							unwrappedDotScopeVal = c
+							return nil
+						}(); err != nil {
+							return err
+						}
+						unwrapped.Scope.SetTo(unwrappedDotScopeVal)
+						return nil
+					}); err != nil {
+						return req, close, errors.Wrap(err, "decode \"scope\"")
 					}
 				}
 			}

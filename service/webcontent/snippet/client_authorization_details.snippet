@@ -1,7 +1,6 @@
 <div>
     ClientId: {{ .ClientId }}<br/>
     
-    LastRefreshed        {{ time .LastRefreshedAt "since" }} <br/>
     <a class="button is-danger" href="/deauthorize/{{ .ClientId }}">(deauthorize)</a>
     <a class="button is-link" href="/client/{{ .ClientId }}">(TODO: client name -> hyperlink)</a><br/>
 <div>

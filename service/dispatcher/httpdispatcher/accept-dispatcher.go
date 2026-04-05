@@ -411,6 +411,14 @@ func (obj *acceptOidcHandler) createUserSession(ctx context.Context, res http.Re
 	}
 
 	idToken, refreshToken := ses.IssueTokens(obj.urlPrefix, obj.urlPrefix)
+	sessionStore := obj.daoSource.GetSessionStore(ctx)
+	err = sessionStore.SaveSession(ctx, ses)
+	if err != nil {
+		obj.templateDispatcher.RespondWithTemplate("register.html", 500, res, map[string]any{
+			"err": err,
+		})
+		return
+	}
 
 	jwt, err := jwtutil.ClaimsToJwt(idToken, key.Kid, rsaKey)
 	if err != nil {

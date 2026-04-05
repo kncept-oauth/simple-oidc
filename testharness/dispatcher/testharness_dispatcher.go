@@ -23,9 +23,17 @@ import (
 
 const staticClientId = "static-client-id"
 
-func NewApplication(daoSource dao.DaoSource) *fiber.App {
-	message := ""
+type testApp struct {
+	message         string
+	fiberOidcConfig *fiberoidc.Config
+	fiberOidc       fiberoidc.FiberOidc
+	daoSource       dao.DaoSource
+}
 
+func NewApplication(daoSource dao.DaoSource) *fiber.App {
+	testApp := &testApp{
+		daoSource: daoSource,
+	}
 	ctx := context.Background()
 	viewEngine := html.NewFileSystem(http.FS(webcontent.Views), ".html")
 	viewEngine.AddFunc("Clients", func() []*client.Client {
@@ -55,7 +63,7 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 		daoSource.GetClientStore(ctx).SaveClient(ctx, staticClient)
 	}
 
-	fiberOidcConfig := &fiberoidc.Config{
+	testApp.fiberOidcConfig = &fiberoidc.Config{
 		OidcProviderConfig: provider.OidcProviderConfig{
 			Issuer:       "https://localhost:8443",
 			ClientId:     staticClientId,
@@ -63,13 +71,15 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 			RedirectUri:  "https://localhost:3000/oauth2/callback",
 		},
 		WebAppConfig: fiberoidc.WebAppConfig{
-			AuthCookieName: "bearer-auth",
+			AuthCookieName:        "bearer-auth",
+			AuthRefreshCookieName: "refresh-auth",
 		},
 	}
-	fiberOidc, err := fiberoidc.New(ctx, fiberOidcConfig)
+	fiberOidc, err := fiberoidc.New(ctx, testApp.fiberOidcConfig)
 	if err != nil {
 		panic(err)
 	}
+	testApp.fiberOidc = fiberOidc
 
 	app.Use(
 		compress.New(),
@@ -81,99 +91,109 @@ func NewApplication(daoSource dao.DaoSource) *fiber.App {
 		Root:   http.FS(webcontent.Static),
 		Browse: true,
 	}))
-	app.Get("/", fiberOidc.UnprotectedRoute(), func(c *fiber.Ctx) error {
-		idToken := fiberoidc.GoOidcToken(c)
-		ctx := c.Context()
-		bind := make(map[string]any)
-		bind["ClientId"] = staticClientId
-		bind["Issuer"] = fiberOidcConfig.Issuer
-		bind["RedirectUri"] = fiberOidcConfig.RedirectUri
-		if idToken == nil {
-			bind["LoggedIn"] = false
-		} else {
-			bind["LoggedIn"] = true
-			bind["IdToken"] = idToken
-		}
+	app.Get("/", fiberOidc.UnprotectedRoute(), testApp.GetIndex)
+	// app.Get("/unprotected", fiberOidc.UnprotectedRoute(), testApp.GetIndex)
+	// app.Get("/protected", fiberOidc.ProtectedRoute(), testApp.GetIndex)
 
-		// bind // users
-		userStore := daoSource.GetUserStore(ctx)
-		allUsers := make([]*users.OidcUser, 0)
-		userStore.EnumerateUsers(ctx, func(user *users.OidcUser) bool {
-			allUsers = append(allUsers, user)
-			return true
-		})
-		bind["AllUsers"] = allUsers
-		if message != "" {
-			bind["Message"] = message
-			bind["HasMessage"] = true
-			message = "" // (globally shared) state only persists for ONE render
-		} else {
-			bind["HasMessage"] = false
-		}
-		bind["DatastoreType"] = daoSource.GetDaoSourceDescription()
+	app.Post("/", fiberOidc.UnprotectedRoute(), testApp.PostIndex)
+	// app.Post("/unprotected", fiberOidc.UnprotectedRoute(), testApp.PostIndex)
+	// app.Post("/protected", fiberOidc.ProtectedRoute(), testApp.PostIndex)
+	return app
+}
 
-		return c.Render("index", bind)
+func (obj *testApp) GetIndex(c *fiber.Ctx) error {
+	idToken := fiberoidc.GoOidcToken(c)
+	providerAuth := fiberoidc.ProviderAuth(c)
+	ctx := c.Context()
+	bind := make(map[string]any)
+	bind["ClientId"] = staticClientId
+	bind["Issuer"] = obj.fiberOidcConfig.Issuer
+	bind["RedirectUri"] = obj.fiberOidcConfig.RedirectUri
+	if idToken == nil {
+		bind["LoggedIn"] = false
+	} else {
+		bind["LoggedIn"] = true
+		bind["IdToken"] = idToken
+		bind["Oauth2Token"] = providerAuth.GetOauth2Token()
+	}
+
+	// bind // users
+	userStore := obj.daoSource.GetUserStore(ctx)
+	allUsers := make([]*users.OidcUser, 0)
+	userStore.EnumerateUsers(ctx, func(user *users.OidcUser) bool {
+		allUsers = append(allUsers, user)
+		return true
 	})
+	bind["AllUsers"] = allUsers
+	if obj.message != "" {
+		bind["Message"] = obj.message
+		bind["HasMessage"] = true
+		obj.message = "" // (globally shared) state only persists for ONE render
+	} else {
+		bind["HasMessage"] = false
+	}
+	bind["DatastoreType"] = obj.daoSource.GetDaoSourceDescription()
 
-	app.Post("/", fiberOidc.UnprotectedRoute(), func(c *fiber.Ctx) error {
-		ctx := c.Context()
-		payload := struct {
-			Op string
-			Id string
-		}{}
-		err := c.BodyParser(&payload)
+	return c.Render("index", bind)
+}
+
+func (obj *testApp) PostIndex(c *fiber.Ctx) error {
+	ctx := c.Context()
+	payload := struct {
+		Op string
+		Id string
+	}{}
+	err := c.BodyParser(&payload)
+	if err != nil {
+		return err
+	}
+	switch payload.Op {
+	case "init":
+		obj.fiberOidc.Providers().Initialize(c.Context())
+	case "create":
+		c := &client.Client{
+			ClientId: uuid.NewString(),
+			AllowedRedirectUris: []string{
+				"https://localhost:3000/oauth2/callback",
+			},
+		}
+		err = obj.daoSource.GetClientStore(ctx).SaveClient(ctx, c)
+		if err == nil {
+			obj.message = fmt.Sprintf("Successfully created client:\n%v", c.ClientId)
+		} else {
+			obj.message = fmt.Sprintf("Error occurred:\n%v", err)
+		}
+	case "delete":
+		c, err := obj.daoSource.GetClientStore(ctx).GetClient(ctx, payload.Id)
 		if err != nil {
 			return err
 		}
-		switch payload.Op {
-		case "init":
-			fiberOidc.Providers().Initialize(c.Context())
-		case "create":
-			c := &client.Client{
-				ClientId: uuid.NewString(),
-				AllowedRedirectUris: []string{
-					"https://localhost:3000/oauth2/callback",
-				},
-			}
-			err = daoSource.GetClientStore(ctx).SaveClient(ctx, c)
-			if err == nil {
-				message = fmt.Sprintf("Successfully created client:\n%v", c.ClientId)
-			} else {
-				message = fmt.Sprintf("Error occurred:\n%v", err)
-			}
-		case "delete":
-			c, err := daoSource.GetClientStore(ctx).GetClient(ctx, payload.Id)
-			if err != nil {
-				return err
-			}
-			if c == nil {
-				return errors.New("no client with id " + payload.Id)
-			}
-			err = daoSource.GetClientStore(ctx).RemoveClient(ctx, payload.Id)
-			if err != nil {
-				return err
-			}
-		case "logout":
-			c.Cookie(&fiber.Cookie{
-				Name:  fiberOidcConfig.AuthCookieName,
-				Value: "",
-			})
-		case "userinfo-callback":
-			{
-
-				goOidcProvider, err := fiberOidc.Providers().GoOidcProvider(ctx)
-				if err != nil {
-					return err
-				}
-
-				userInfo, err := goOidcProvider.UserInfo(ctx, fiberoidc.Oauth2TokenSource(c))
-				message = fmt.Sprintf("%+v", userInfo)
-			}
+		if c == nil {
+			return errors.New("no client with id " + payload.Id)
 		}
+		err = obj.daoSource.GetClientStore(ctx).RemoveClient(ctx, payload.Id)
+		if err != nil {
+			return err
+		}
+	case "logout":
+		c.Cookie(&fiber.Cookie{
+			Name:  obj.fiberOidcConfig.AuthCookieName,
+			Value: "",
+		})
+	case "userinfo-callback":
+		{
 
-		// dynamically pull form type & details to perform operation
-		// then redirect back to index
-		return c.Redirect("/")
-	})
-	return app
+			goOidcProvider, err := obj.fiberOidc.Providers().GoOidcProvider(ctx)
+			if err != nil {
+				return err
+			}
+
+			userInfo, err := goOidcProvider.UserInfo(ctx, fiberoidc.Oauth2TokenSource(c))
+			obj.message = fmt.Sprintf("%+v", userInfo)
+		}
+	}
+
+	// dynamically pull form type & details to perform operation
+	// then redirect back to index
+	return c.Redirect("/")
 }

@@ -38,15 +38,29 @@ func (obj *authorizationHandler) TokenPost(ctx context.Context, req api.TokenPos
 		return nil, errors.New("unable to parse request body")
 	}
 
-	authCode, err := obj.DaoSource.GetAuthorizationCodeStore(ctx).GetAuthorizationCode(ctx, tokenRequestBody.Code)
+	grantType := strings.ToLower(tokenRequestBody.GrantType.Or(""))
+	grantPayload := ""
+	// validate requried sets
+	switch grantType {
+	case "authorization_code":
+		// code must be set
+		grantPayload = tokenRequestBody.Code.Or("")
+		if grantPayload == "" {
+			return nil, fmt.Errorf("query parameter \"code\" not set")
+		}
+	case "refresh_token":
+		grantPayload = tokenRequestBody.RefreshToken.Or("")
+		if grantPayload == "" {
+			return nil, fmt.Errorf("query parameter \"code\" not set")
+		}
+	}
+
+	ses, err := obj.mapToSession(ctx, grantType, grantPayload)
 	if err != nil {
 		return nil, err
 	}
-
-	// obj.DaoSource.GetAuthorizationCodeStore().DeleteAuthorizationCode(ctx, tokenRequestBody.Code)
-	acParams, err := params.OidcParamsFromQuery(authCode.OidcParams)
-	if err != nil {
-		return nil, err
+	if ses == nil {
+		return nil, fmt.Errorf("Session Not Found")
 	}
 
 	keyPair, err := keys.GetCurrentKey(ctx, obj.DaoSource.GetKeyStore(ctx))
@@ -63,16 +77,7 @@ func (obj *authorizationHandler) TokenPost(ctx context.Context, req api.TokenPos
 		return nil, errors.New("not an rsa key")
 	}
 
-	userId := authCode.UserId
-	clientId := acParams.ClientId
-
-	ses, err := session.NewSession(userId, clientId)
-	if err != nil {
-		return nil, err
-	}
-
-	idToken, refreshToken := ses.IssueTokens(obj.Issuer, clientId)
-
+	idToken, refreshToken := ses.IssueTokens(obj.Issuer, ses.ClientId)
 	sessionStore := obj.DaoSource.GetSessionStore(ctx)
 	err = sessionStore.SaveSession(ctx, ses)
 	if err != nil {
@@ -96,7 +101,58 @@ func (obj *authorizationHandler) TokenPost(ctx context.Context, req api.TokenPos
 			RefreshToken: refreshTokenJwt,
 		},
 	}, nil
+
 }
+
+func (obj *authorizationHandler) mapToSession(ctx context.Context, grantType string, grantPayload string) (*session.Session, error) {
+	switch grantType {
+	case "authorization_code":
+		authCode, err := obj.DaoSource.GetAuthorizationCodeStore(ctx).GetAuthorizationCode(ctx, grantPayload)
+		if err != nil {
+			return nil, err
+		}
+
+		// obj.DaoSource.GetAuthorizationCodeStore().DeleteAuthorizationCode(ctx, tokenRequestBody.Code)
+		acParams, err := params.OidcParamsFromQuery(authCode.OidcParams)
+		if err != nil {
+			return nil, err
+		}
+		userId := authCode.UserId
+		clientId := acParams.ClientId
+
+		ses, err := session.NewSession(userId, clientId)
+		if err != nil {
+			return nil, err
+		}
+		return ses, nil
+	case "refresh_token":
+		refreshClaims := &jwtutil.RefreshClaimsJwt{}
+		err := jwtutil.ParseJwt(ctx, grantPayload, obj.DaoSource.GetKeyStore(ctx), obj.Issuer, refreshClaims)
+		if err != nil {
+			return nil, err
+		}
+
+		userId := refreshClaims.Sub
+		sessionId := refreshClaims.Ses
+		// clientId := refreshClaims.au
+
+		ses, err := obj.DaoSource.GetSessionStore(ctx).LoadSession(ctx, sessionId, userId)
+		if err != nil {
+			return nil, err
+		}
+		if ses == nil {
+			return nil, nil
+		}
+
+		if ses.RefreshCode != refreshClaims.Code {
+			fmt.Printf("Refresh Code Mismatch:\nses %v\njwt %v\n", ses.RefreshCode, refreshClaims.Code)
+			return nil, fmt.Errorf("refresh code mismatch")
+		}
+		return ses, nil
+	}
+	return nil, fmt.Errorf("Unknown grant type: %s", grantType)
+}
+
 func (obj authorizationHandler) AuthorizeGet(ctx context.Context, params api.AuthorizeGetParams) (api.AuthorizeGetRes, error) {
 	client, err := obj.DaoSource.GetClientStore(ctx).GetClient(ctx, params.ClientID)
 	if err != nil {

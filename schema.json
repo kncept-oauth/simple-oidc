@@ -411,10 +411,14 @@
             "TokenRequestBody": {
                 "type": "object",
                 "required":[
-                    "code"
+                    
                 ],
                 "properties": {
                     "code": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "refresh_token": {
                         "nullable": false,
                         "type": "string"
                     },
@@ -427,6 +431,10 @@
                         "type": "string"
                     },
                     "redirect_uri": {
+                        "nullable": false,
+                        "type": "string"
+                    },
+                    "scope": {
                         "nullable": false,
                         "type": "string"
                     }

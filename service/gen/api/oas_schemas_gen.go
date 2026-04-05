@@ -509,15 +509,22 @@ func (*TokenPostBadRequestApplicationJSON) tokenPostRes() {}
 
 // Ref: #/components/schemas/TokenRequestBody
 type TokenRequestBody struct {
-	Code        string    `json:"code"`
-	GrantType   OptString `json:"grant_type"`
-	ClientID    OptString `json:"client_id"`
-	RedirectURI OptString `json:"redirect_uri"`
+	Code         OptString `json:"code"`
+	RefreshToken OptString `json:"refresh_token"`
+	GrantType    OptString `json:"grant_type"`
+	ClientID     OptString `json:"client_id"`
+	RedirectURI  OptString `json:"redirect_uri"`
+	Scope        OptString `json:"scope"`
 }
 
 // GetCode returns the value of Code.
-func (s *TokenRequestBody) GetCode() string {
+func (s *TokenRequestBody) GetCode() OptString {
 	return s.Code
+}
+
+// GetRefreshToken returns the value of RefreshToken.
+func (s *TokenRequestBody) GetRefreshToken() OptString {
+	return s.RefreshToken
 }
 
 // GetGrantType returns the value of GrantType.
@@ -535,9 +542,19 @@ func (s *TokenRequestBody) GetRedirectURI() OptString {
 	return s.RedirectURI
 }
 
+// GetScope returns the value of Scope.
+func (s *TokenRequestBody) GetScope() OptString {
+	return s.Scope
+}
+
 // SetCode sets the value of Code.
-func (s *TokenRequestBody) SetCode(val string) {
+func (s *TokenRequestBody) SetCode(val OptString) {
 	s.Code = val
+}
+
+// SetRefreshToken sets the value of RefreshToken.
+func (s *TokenRequestBody) SetRefreshToken(val OptString) {
+	s.RefreshToken = val
 }
 
 // SetGrantType sets the value of GrantType.
@@ -553,6 +570,11 @@ func (s *TokenRequestBody) SetClientID(val OptString) {
 // SetRedirectURI sets the value of RedirectURI.
 func (s *TokenRequestBody) SetRedirectURI(val OptString) {
 	s.RedirectURI = val
+}
+
+// SetScope sets the value of Scope.
+func (s *TokenRequestBody) SetScope(val OptString) {
+	s.Scope = val
 }
 
 // Ref: #/components/schemas/UserInfo

@@ -32,7 +32,7 @@ YOu may need to set the following environment properties
     - eg: ap-southeast-2,us-east-1
   - TABLE_PREFIX
     - a dynamo db table prefix
-Run `./build.sh deploy` with valid AWS credentials.
+Run `./run.sh deploy` with valid AWS credentials.
 
 # Deployment 
 1) Ensure your environment is set up
@@ -45,7 +45,7 @@ Run `./build.sh deploy` with valid AWS credentials.
 
 # Development
 Run main.go from the testharness project
-`./build.sh testharness`
+`./run.sh testharness`
 
 This project comes with a dev container, as supported by VSCode.
 The provided dockerfiles should provide an adequate development environment.

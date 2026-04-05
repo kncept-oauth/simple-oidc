@@ -17,22 +17,23 @@ type Session struct {
 
 	Fingerprint string `dynamodbav:"fingerprint"` // device fingerprint
 
-	Created      time.Time `dynamodbav:"created"`
-	Refreshed    time.Time `dynamodbav:"refreshed"`
-	IssueCounter int64     `dynamodbav:"issues"`
+	Created    time.Time `dynamodbav:"created"`
+	Refreshed  time.Time `dynamodbav:"refreshed"`
+	IssueCount int64     `dynamodbav:"issueCount"`
 
 	RefreshCode string `dynamodbav:"refreshCode"` // refresh code needs to match when extracted from the RefreshToken JWT
 }
 
 // TODO: these two should _really_ be a single function
-func (obj Session) IssueTokens(issuer string, audience ...string) (*jwtutil.IdToken, *jwtutil.RefreshClaimsJwt) {
+func (obj *Session) IssueTokens(issuer string, audience ...string) (*jwtutil.IdToken, *jwtutil.RefreshClaimsJwt) {
 	if len(audience) == 0 {
 		panic("Must supply at least one audience")
 	}
 	obj.RefreshCode = uuid.NewString()
-	obj.IssueCounter = obj.IssueCounter + 1
+	obj.IssueCount = obj.IssueCount + 1
 	obj.Refreshed = time.Now()
 
+	// TODO: Session duration from (restricted) client params
 	expiry := obj.Refreshed.Add(9 * time.Hour)
 
 	idToken := &jwtutil.IdToken{
@@ -77,13 +78,13 @@ func NewSession(userId string, clientId string) (*Session, error) {
 		return nil, err
 	}
 	return &Session{
-		SessionId:    k.String(),
-		UserId:       userId,
-		ClientId:     clientId,
-		Created:      now,
-		Refreshed:    now,
-		IssueCounter: 0,
-		RefreshCode:  uuid.NewString(),
+		SessionId:   k.String(),
+		UserId:      userId,
+		ClientId:    clientId,
+		Created:     now,
+		Refreshed:   now,
+		IssueCount:  0,
+		RefreshCode: "",
 	}, nil
 }
 

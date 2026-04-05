@@ -93,6 +93,12 @@
             {{ end }}
             </ul>
         </div>
+
+
+        {{ if .LoggedIn }}
+            <div class="outlined">Access Token<br/><div>{{.Oauth2Token.AccessToken}}</div></div>
+            <div class="outlined">Refresh Token<br/><div>{{.Oauth2Token.RefreshToken}}</div></div>
+        {{ end }}
 </body>
 
 </html>

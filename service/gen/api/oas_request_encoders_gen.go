@@ -42,7 +42,26 @@ func encodeTokenPostRequest(
 				Explode: true,
 			}
 			if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
-				return e.EncodeValue(conv.StringToString(request.Code))
+				if val, ok := request.Code.Get(); ok {
+					return e.EncodeValue(conv.StringToString(val))
+				}
+				return nil
+			}); err != nil {
+				return errors.Wrap(err, "encode query")
+			}
+		}
+		{
+			// Encode "refresh_token" form field.
+			cfg := uri.QueryParameterEncodingConfig{
+				Name:    "refresh_token",
+				Style:   uri.QueryStyleForm,
+				Explode: true,
+			}
+			if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+				if val, ok := request.RefreshToken.Get(); ok {
+					return e.EncodeValue(conv.StringToString(val))
+				}
+				return nil
 			}); err != nil {
 				return errors.Wrap(err, "encode query")
 			}
@@ -88,6 +107,22 @@ func encodeTokenPostRequest(
 			}
 			if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
 				if val, ok := request.RedirectURI.Get(); ok {
+					return e.EncodeValue(conv.StringToString(val))
+				}
+				return nil
+			}); err != nil {
+				return errors.Wrap(err, "encode query")
+			}
+		}
+		{
+			// Encode "scope" form field.
+			cfg := uri.QueryParameterEncodingConfig{
+				Name:    "scope",
+				Style:   uri.QueryStyleForm,
+				Explode: true,
+			}
+			if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+				if val, ok := request.Scope.Get(); ok {
 					return e.EncodeValue(conv.StringToString(val))
 				}
 				return nil
